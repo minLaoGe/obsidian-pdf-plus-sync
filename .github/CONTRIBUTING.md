@@ -1,27 +1,12 @@
-Thank you for considering contributing to this plugin!
-Before proceeding, please take a moment to review the following guidelines.
+# 参与 PDF++ Sync
 
-### General Guidelines
+这是基于 Ryota Ushio 的 PDF++ 独立迭代的项目。问题和改动请提交到本仓库。
 
-Create an issue before submitting a pull request. This helps us discuss your proposal before any major work is done.
+## 开发与验证
 
-### How to build the plugin
+使用 Node.js 22.13+，执行 `npm ci --ignore-scripts`、`npm test`、`npm run build`。
+开发结构与跨端验证步骤见根目录 README。同步功能的改动应覆盖进度保存、恢复、显式链接优先和后台标签页行为；涉及移动端时注明实机系统和 Obsidian 版本。
 
-After cloning the repository, run `pnpm install` to install the dependencies. Then, run `pnpm dev` or `pnpm build` to build the `main.js` file.
+## 提交改动
 
-> [!TIP]
-> The PDF++ plugin instance can be accessed as a global variable `pdfPlus`. This is only for debugging purposes.
-
-### How to load debug info
-
-In each bug report on this repository, you will find a section called **PDF++ debug info**. It includes the user's PDF++ settings so that we can debug the issue with the exact settings of the bug reporter. To load the debug info:
-
-1. Copy the content of the JSON code block into the clipboard.
-2. Open the developer console, and run `pdfPlus.debugMode = true`.
-3. Now, a new command "PDF++: Load debug info" is available. Run it to load the user's settings.
-
-### Licensing & Revenue Considerations
-
-This project might become a paid product in the future. If that happens, contributors might not receive a share of the revenue unless there’s a separate agreement. By contributing, you acknowledge and accept this.
-
-However, this does not exclude the possibility of revenue sharing through GitHub Sponsors or other means, at the discretion of the project owner (@RyotaUshio), for contributors who are deemed to have made significant contributions.
+较大的功能建议先开 Issue 讨论。PR 请说明解决的问题、行为变化、验证结果和已知限制。不要提交个人笔记、PDF、凭据或本地插件设置。提交内容沿用本项目 MIT 许可证，保留原有版权声明。

@@ -783,7 +783,7 @@ export default class PDFPlus extends Plugin {
 						'PDF++: There is a newer version available! ',
 						createEl('a', {
 							text: 'Update now',
-							href: 'obsidian://show-plugin?id=pdf-plus',
+							href: 'https://github.com/minLaoGe/obsidian-pdf-plus-sync/releases',
 						})
 					);
 				}));

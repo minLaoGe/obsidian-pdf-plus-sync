@@ -6,7 +6,7 @@
 
 1. 先关闭 PDF++，备份库中 `.obsidian/plugins/pdf-plus/`。
 2. 将安装包的 main.js、manifest.json、styles.css 放入上述目录，保留原来的 data.json。
-3. 重新启用 PDF++。设置顶部的“跨设备 PDF 阅读进度”默认开启。
+3. 重新启用 PDF++ Sync。设置顶部的“跨设备 PDF 阅读进度”默认开启。
 4. 每台电脑、手机、平板都安装同一开发版。
 5. 同步 PDF 文件以及库根目录的 `PDF++ Reading Progress/`。这不是隐藏目录，进度文件为 JSON，需确认同步工具没有排除 JSON。
 6. 在设备 A 阅读后等待至少一秒，并等待同步完成；设备 B 同步完成后重新打开同一路径 PDF，即可续读。

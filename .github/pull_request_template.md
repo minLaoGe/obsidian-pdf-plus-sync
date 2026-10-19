@@ -1,7 +1,11 @@
-- [ ] I have read the [CONTRIBUTING.md](../CONTRIBUTING.md) guidelines.
+## 改动
 
----
+说明问题、触发条件与修改后的行为。
 
-### Description
-<!-- Please describe the changes in this PR. -->
+## 验证
 
+说明自动化测试、构建和实机验证结果。
+
+## 限制
+
+列出未验证的平台或已知问题。

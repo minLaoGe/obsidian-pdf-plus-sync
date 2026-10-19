@@ -1,8 +1,5 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: 'Questions'
-    url: https://github.com/RyotaUshio/obsidian-pdf-plus/discussions
-    about: 'Ask questions or browse the past questions on GitHub Discussions.'
-  - name: 'Contribute to the docs'
-    url: https://github.com/RyotaUshio/obsidian-pdf-plus/tree/docs
-    about: 'Improve the documentation to help the community.'
+  - name: 安装与使用说明
+    url: https://github.com/minLaoGe/obsidian-pdf-plus-sync#readme
+    about: 查看安装、跨设备同步配置和已知限制。

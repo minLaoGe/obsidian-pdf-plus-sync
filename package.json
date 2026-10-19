@@ -1,7 +1,7 @@
 {
-    "name": "obsidian-pdf-plus",
+    "name": "obsidian-pdf-plus-sync",
     "version": "0.40.31",
-    "description": "The most Obsidian-native PDF annotation tool ever.",
+    "description": "Independent continuation of PDF++ with cross-device reading progress.",
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
@@ -11,7 +11,7 @@
         "test": "node tests/reading-progress.mjs"
     },
     "keywords": [],
-    "author": "Ryota Ushio",
+    "author": "minLaoGe",
     "license": "MIT",
     "devDependencies": {
         "@cantoo/pdf-lib": "^2.4.3",
@@ -34,5 +34,12 @@
         "pdfjs-dist": "^5.4.54",
         "tslib": "2.8.1",
         "typescript": "5.6.3"
+    },
+    "contributors": [
+        "Ryota Ushio (original PDF++)"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/minLaoGe/obsidian-pdf-plus-sync.git"
     }
 }

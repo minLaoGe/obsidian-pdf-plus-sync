@@ -1094,12 +1094,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		};
 
 		return this.addHeading(
-			'Support development',
+			'Support original PDF++ author',
 			'funding',
 			'lucide-heart',
 			({ iconEl }) => postProcessIcon(iconEl)
 		)
-			.setDesc('If you find PDF++ helpful, please consider supporting the development to help me keep this plugin alive.\n\nIf you prefer PayPal, please make donations via Ko-fi. Thank you!')
+			.setDesc('PDF++ Sync is based on PDF++ by Ryota Ushio. These donation links support the original author, not the maintainer of this continuation.\n\nIf you prefer PayPal, please make donations via Ko-fi. Thank you!')
 			.then((setting) => {
 				const infoEl = setting.infoEl;
 				const iconEl = setting.settingEl.firstElementChild;

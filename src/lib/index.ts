@@ -1113,7 +1113,7 @@ export class PDFPlusLib {
         detail: string;
     }> {
         const { result: response, error: requestError } = await tryCatchAsync(requestUrl({
-            url: 'https://api.github.com/repos/ryotaushio/obsidian-pdf-plus/releases?per_page=10&page=1',
+            url: 'https://api.github.com/repos/minLaoGe/obsidian-pdf-plus-sync/releases?per_page=10&page=1',
             headers: {
                 accept: 'application/vnd.github+json',
                 'X-GitHub-Api-Version': '2022-11-28',

@@ -26,12 +26,12 @@ export class FreeTextTool extends Component {
     private cleanRegions = new WeakMap<object, Map<string, Promise<HTMLCanvasElement>>>();
     private inputTimer: number | undefined;
     private layoutFrame: number | undefined;
-    constructor(private plugin: PDFPlus, private child: PDFViewerChild, private toolbar: HTMLElement) { super(); }
+    constructor(private plugin: PDFPlus, private child: PDFViewerChild, private toolbar: HTMLElement, private saveToolbar: HTMLElement) { super(); }
     onload() {
         const group = this.toolbar.createDiv({ cls: 'pdf-sync-text-tools' });
         this.button = group.createEl('button', { cls: 'clickable-icon pdf-plus-free-text-button', attr: { 'aria-label': '添加文字', type: 'button' } });
         setIcon(this.button, 'type'); setTooltip(this.button, '添加文字 · 双击页面输入');
-        this.saveButton = group.createEl('button', { cls: 'pdf-sync-save', attr: { type: 'button', 'aria-label': '统一保存 PDF 文字与高亮' } });
+        this.saveButton = this.saveToolbar.createEl('button', { cls: 'pdf-sync-save', attr: { type: 'button', 'aria-label': '统一保存 PDF 文字与高亮' } });
         setIcon(this.saveButton.createSpan(), 'save');
         this.label = this.saveButton.createSpan();
         this.registerDomEvent(this.button, 'click', () => {
@@ -90,7 +90,7 @@ export class FreeTextTool extends Component {
         }));
         this.updateStatus();
         this.register(() => {
-            this.commitCurrent(); this.alive = false; group.remove(); this.setPlacing(false); this.closeEditor();
+            this.commitCurrent(); this.alive = false; group.remove(); this.saveButton.remove(); this.setPlacing(false); this.closeEditor();
             window.clearTimeout(this.inputTimer);
             if (this.layoutFrame !== undefined) this.child.containerEl.win.cancelAnimationFrame(this.layoutFrame);
             this.child.containerEl.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask').forEach(el => el.remove());

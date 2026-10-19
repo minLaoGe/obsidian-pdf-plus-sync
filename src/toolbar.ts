@@ -25,7 +25,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
 
     onload() {
         this.addColorPalette();
-        this.addChild(new FreeTextTool(this.plugin, this.child, this.toolbar.toolbarLeftEl));
+        this.addChild(new FreeTextTool(this.plugin, this.child, this.toolbar.toolbarLeftEl, this.toolbar.toolbarRightEl));
         this.addChild(new PDFSelectionTools(this.plugin, this.child, this.toolbar.toolbarLeftEl));
         this.addChild(new PDFBookmarks(this.plugin, this.child, this.toolbar.toolbarLeftEl));
         this.replaceDisplayOptionsDropdown();

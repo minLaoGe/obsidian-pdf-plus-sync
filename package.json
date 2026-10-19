@@ -1,6 +1,6 @@
 {
     "name": "obsidian-pdf-plus-sync",
-    "version": "0.45.2",
+    "version": "0.45.3",
     "description": "Independent continuation of PDF++ with cross-device reading progress.",
     "scripts": {
         "dev": "node esbuild.config.mjs",

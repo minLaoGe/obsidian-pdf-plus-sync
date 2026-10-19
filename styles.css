@@ -693,14 +693,39 @@ body.pdf-plus-vim-hint-inverted {
     --pdf-plus-vim-hint-background-color: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
 }
 
-/* Inline FreeText annotation editor: saved text is part of the PDF, not this overlay. */
+/* Browser-style text annotations: compact toolbar, native text editing, Interact.js gestures. */
 .pdf-plus-text-placement .page { cursor: crosshair; }
-.pdf-plus-free-text-button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
-.pdf-plus-text-hit { position: absolute; z-index: 20; padding: 0 !important; margin: 0; min-width: 4px; min-height: 4px; border: 1px solid transparent !important; border-radius: 2px; background: transparent !important; box-shadow: none !important; cursor: text; }
-.pdf-plus-text-hit:hover, .pdf-plus-text-hit:focus-visible { border-color: var(--interactive-accent) !important; outline: 1px dashed var(--interactive-accent); }
-.pdf-plus-inline-text-editor { position: absolute; z-index: 100; max-width: calc(100% - 8px); padding: 4px; border: 1px solid var(--interactive-accent); border-radius: 5px; background: var(--background-primary); box-shadow: 0 4px 18px #0003; color: var(--text-normal); }
-.pdf-plus-inline-text-editor textarea { display: block; width: 100%; max-height: 40vh; padding: 4px; border: 0; resize: vertical; line-height: 1.4; background: transparent; }
-.pdf-plus-inline-text-controls { display: flex; gap: 4px; flex-wrap: wrap; padding-top: 4px; }
-.pdf-plus-inline-text-controls input[type=number] { width: 54px; }
-.pdf-plus-inline-text-controls input[type=color] { width: 34px; padding: 2px; }
-.pdf-plus-inline-text-controls button { min-height: 30px; padding: 3px 8px; }
+.pdf-sync-text-tools { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: 6px; }
+.pdf-sync-text-tools .pdf-plus-free-text-button { border: 0; background: transparent; box-shadow: none; }
+.pdf-plus-free-text-button.is-active { color: #1a73e8; background: #1a73e81a; border-radius: 6px; }
+.pdf-sync-save { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 0; box-shadow: none; border-radius: 6px; background: var(--background-modifier-hover); font-size: 12px; white-space: nowrap; }
+.pdf-sync-save svg { width: 15px; height: 15px; }
+.pdf-sync-save.has-changes { background: #1a73e8; color: #fff; }
+.pdf-sync-save:disabled { opacity: .55; }
+.pdf-sync-note-hit { position: absolute; z-index: 20; margin: 0; padding: 0 !important; min-width: 4px; min-height: 4px; border: 1px solid transparent !important; border-radius: 2px; background: transparent !important; box-shadow: none !important; cursor: text; }
+.pdf-sync-note-hit:hover, .pdf-sync-note-hit:focus-visible { outline: 1px solid #1a73e8; }
+.pdf-sync-note-preview, .pdf-sync-editor { position: absolute; z-index: 21; box-sizing: border-box; background: transparent; color: #202124; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; cursor: text; }
+.pdf-sync-note-preview.is-mask { z-index: 20; pointer-events: none; }
+.pdf-sync-note-preview.is-mask canvas { display: block; position: absolute; inset: 0; }
+.pdf-sync-editor { z-index: 30; outline: 1.5px solid #1a73e8; border-radius: 1px; min-width: 1em; }
+.pdf-sync-editor-content { width: max-content; max-width: 100%; min-width: 1em; min-height: 1.4em; box-sizing: border-box; outline: none !important; white-space: pre-wrap; word-break: break-all; caret-color: #1a73e8; user-select: text; -webkit-user-select: text; cursor: text; }
+.pdf-sync-editor-content:empty:before { content: attr(data-placeholder); color: #9aa0a6; pointer-events: none; }
+.pdf-sync-resize-handle { position: absolute; top: 50%; width: 8px; height: 8px; margin-top: -4px; background: #fff; border: 1.5px solid #1a73e8; border-radius: 50%; touch-action: none; }
+.pdf-sync-resize-handle.is-left { left: -5px; cursor: ew-resize; }
+.pdf-sync-resize-handle.is-right { right: -5px; cursor: ew-resize; }
+.pdf-sync-floating-toolbar { position: fixed; z-index: 10000; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; padding: 6px; max-width: calc(100vw - 16px); border: 1px solid #dadce0; border-radius: 10px; background: #fff; color: #3c4043; box-shadow: 0 3px 12px #20212424, 0 1px 3px #20212414; font: 13px/1.2 -apple-system, BlinkMacSystemFont, sans-serif; }
+.pdf-sync-floating-toolbar button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-width: 0; padding: 4px; border: 0; border-radius: 5px; background: transparent; box-shadow: none; color: #3c4043; }
+.pdf-sync-floating-toolbar button:hover { background: #f1f3f4; }
+.pdf-sync-floating-toolbar button:focus-visible { outline: 2px solid #1a73e8; outline-offset: 1px; }
+.pdf-sync-floating-toolbar svg { width: 17px; height: 17px; }
+.pdf-sync-floating-toolbar .pdf-sync-text-grip { cursor: grab; touch-action: none; color: #80868b; }
+.pdf-sync-font-size { display: flex; align-items: center; }
+.pdf-sync-font-size input { width: 36px; height: 28px; padding: 2px; border: 0; border-radius: 4px; text-align: center; color: #202124; background: #f8f9fa; box-shadow: none; appearance: textfield; }
+.pdf-sync-font-size input::-webkit-inner-spin-button, .pdf-sync-font-size input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.pdf-sync-toolbar-divider { width: 1px; height: 20px; margin: 0 4px; background: #e8eaed; }
+.pdf-sync-color-swatches { display: flex; align-items: center; gap: 2px; }
+.pdf-sync-color-swatches .pdf-sync-color-swatch { width: 22px; height: 22px; padding: 3px; border: 3px solid #fff; border-radius: 50%; background: var(--swatch-color); outline: 1px solid transparent; }
+.pdf-sync-color-swatches .pdf-sync-color-swatch:hover, .pdf-sync-color-swatches .pdf-sync-color-swatch[aria-pressed=true] { outline-color: #9aa0a6; background: var(--swatch-color); }
+.pdf-sync-custom-color { width: 24px; height: 24px; padding: 2px; border: 1px solid #dadce0; border-radius: 50%; background: conic-gradient(#ea4335, #fbbc04, #34a853, #4285f4, #ea4335); }
+.pdf-sync-floating-toolbar .pdf-sync-format-done { color: #1a73e8; background: #e8f0fe; }
+@media (max-width: 600px) { .pdf-sync-floating-toolbar { gap: 1px; padding: 5px; } .pdf-sync-toolbar-divider { margin: 0 2px; } .pdf-sync-floating-toolbar button { width: 27px; height: 30px; } }

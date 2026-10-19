@@ -216,7 +216,7 @@ export class ReadingSession {
         try {
             await this.owner.store.write(record);
             this.savedSignature = signature(record);
-            this.owner.setStatus(`PDF 第 ${record.page} 页 · 已保存到同步目录`);
+            if (!this.disposed && this.active()) this.owner.setStatus(`PDF 第 ${record.page} 页 · 已保存到同步目录`);
         } catch (error) {
             if (!this.pending) this.pending = record;
             this.owner.report(error);

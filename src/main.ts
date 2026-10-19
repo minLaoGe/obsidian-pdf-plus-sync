@@ -107,6 +107,8 @@ export default class PDFPlus extends Plugin {
 
 		await this.loadSettings();
 		await this.saveSettings();
+        this.freeText.initialize();
+        this.register(() => this.freeText.destroy());
 		this.readingProgress = this.addChild(new ReadingProgressSync(this));
 		await this.readingProgress.initialize();
 

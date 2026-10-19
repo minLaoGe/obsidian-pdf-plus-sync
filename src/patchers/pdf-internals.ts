@@ -858,7 +858,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 // > Uncaught TypeError: Cannot read properties of undefined (reading 'str')
                 // 
                 // An annotation popup should not be rendered when clicking a link annotation.
-                if (annotationElement.data.subtype === 'Link') {
+                if (annotationElement.data.subtype === 'Link' ||
+                    (annotationElement.data.subtype === 'FreeText' && this.containerEl.hasClass('pdf-sync-editing'))) {
                     return;
                 }
 

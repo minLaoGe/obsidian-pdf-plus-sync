@@ -3,6 +3,9 @@ import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFRe
 export interface TextBox {
     id?: string;
     source?: string;
+    originalText?: string;
+    autoFont?: boolean;
+    autoColor?: boolean;
     page: number;
     rect: [number, number, number, number];
     text: string;

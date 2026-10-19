@@ -389,3 +389,8 @@ Portions of this software may include code derived from Tridactyl (https://githu
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
+
+Interact.js 1.10.27 — Copyright (c) 2012-present Taye Adeyemi <dev@taye.me>
+MIT License. Used for the PDF text editor drag and resize interactions.
+Full license: licenses/interactjs-MIT.txt
+Upstream: https://github.com/taye/interact.js

@@ -751,3 +751,7 @@ body.pdf-plus-vim-hint-inverted {
 .pdf-sync-bookmark-row svg { width: 14px; height: 14px; }
 .pdf-sync-bookmark-jump { flex: 1; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .pdf-sync-bookmarks-empty { color: var(--text-muted); font-size: 13px; }
+
+.pdf-sync-region-button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; white-space: nowrap; flex-shrink: 0; font-size: 12px; }
+.pdf-sync-region-button svg { width: 16px; height: 16px; }
+.pdf-sync-region-button[aria-pressed="true"] { color: #fff; background: #1a73e8; }

@@ -10,16 +10,18 @@ export class PDFSelectionTools extends Component {
     constructor(private plugin: PDFPlus, private child: PDFViewerChild, private toolbar: HTMLElement) { super(); }
     onload() {
         const text = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '选择 PDF 正文', title: '选择文本模式：拖动选择正文，再点击荧光笔' } }); setIcon(text, 'text-cursor');
-        const region = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '框选高亮（支持扫描 PDF）', title: '拖动框选高亮区域，无需文字层' } }); setIcon(region, 'scan-line');
+        const region = this.toolbar.createEl('button', { cls: 'pdf-sync-region-button', attr: { type: 'button', 'aria-label': '框选高亮（支持扫描 PDF）', title: '拖动框选高亮区域，无需文字层' } }); setIcon(region.createSpan(), 'scan-line'); region.createSpan({ text: '框选高亮' });
         this.buttons.push(text, region);
-        this.registerDomEvent(text, 'click', () => { this.stop(); this.selecting = !this.selecting; this.region = false; this.update(text, region); if (this.selecting) void this.describeTextLayer(); });
-        this.registerDomEvent(region, 'click', () => { this.stop(); this.region = !this.region; this.selecting = false; this.update(text, region); });
+        this.registerDomEvent(text, 'click', () => { this.stop(); this.selecting = !this.selecting; this.region = false; this.update(text, region); if (this.selecting) void this.describeTextLayer(text, region); });
+        this.registerDomEvent(region, 'click', () => { this.stop(); this.region = !this.region; this.selecting = false; this.update(text, region); if (this.region) new Notice('框选高亮已开启：按住鼠标拖出矩形，松开保存。Esc 取消。'); });
         // Entering the text annotation tool restores annotation hit targets.
         this.registerDomEvent(this.toolbar, 'click', event => { if ((event.target as Element)?.closest('.pdf-plus-free-text-button')) { this.stop(); this.region = this.selecting = false; this.update(text, region); } }, true);
         this.registerDomEvent(this.child.containerEl, 'pointerdown', event => {
             if (!this.region || event.button !== 0) return;
             const element = (event.target as Element)?.closest<HTMLElement>('.page[data-page-number]');
-            if (!element || !this.child.file || !this.plugin.lib.isEditable(this.child)) return;
+            if (!element || !this.child.file) return;
+            if (!this.plugin.lib.isEditable(this.child)) { new Notice('请先在 PDF++ Sync 设置中开启 Enable PDF editing。'); return; }
+            if (this.plugin.freeText.state(this.child.file).saving) { new Notice('PDF 正在保存，请稍后再框选高亮。'); return; }
             if (this.plugin.freeText.state(this.child.file).count) { new Notice('请先保存文字草稿，再框选高亮。'); return; }
             const page = this.child.getPage(Number(element.dataset.pageNumber)); if (!page) return;
             event.preventDefault(); event.stopImmediatePropagation();
@@ -62,11 +64,15 @@ export class PDFSelectionTools extends Component {
         const d = this.drag; this.drag = null; d?.box.remove();
         if (d && this.child.containerEl.hasPointerCapture(d.pointer)) this.child.containerEl.releasePointerCapture(d.pointer);
     }
-    private async describeTextLayer() {
+    private async describeTextLayer(text: HTMLElement, region: HTMLElement) {
         const page = this.child.getPage(this.child.pdfViewer.pdfViewer?.currentPageNumber ?? 1); if (!page?.pdfPage) return;
         try {
             const content = await page.pdfPage.getTextContent();
-            if (!content.items.some(item => 'str' in item && item.str.trim())) new Notice('此页没有可选文字层，可能是扫描件。请用“框选高亮”，或先 OCR 后再选择文字。', 7000);
+            if (!this.selecting) return;
+            if (!content.items.some(item => 'str' in item && item.str.trim())) {
+                this.selecting = false; this.region = true; this.update(text, region);
+                new Notice('此页是扫描页，已切换为框选高亮。按住鼠标拖出矩形，松开即可标亮；Esc 取消。', 7000);
+            }
             else { await page.textLayer?.render(); new Notice('已切换文本选择模式，拖动正文选字后点击荧光笔。'); }
         } catch { new Notice('文字层暂未就绪，请等待页面加载，或使用框选高亮。'); }
     }

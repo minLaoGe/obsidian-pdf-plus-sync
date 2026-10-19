@@ -24,6 +24,7 @@ export function boxFromAnnotation(annotation: any, page: number): TextBox {
 }
 
 export class FreeTextService {
+    highlightColor = '#ffdf00';
     private queue: Promise<unknown> = Promise.resolve();
     private runner: PdfTextRunner;
     private pending = new Map<string, Map<string, TextOperation>>();
@@ -39,6 +40,8 @@ export class FreeTextService {
     initialize() {
         if (this.initialized) return;
         this.initialized = true;
+        const color = this.plugin.app.loadLocalStorage?.('pdf-plus-highlight-color');
+        if (typeof color === 'string' && /^#[\da-f]{6}$/i.test(color)) this.highlightColor = color;
         try {
             const saved = this.plugin.app.loadLocalStorage?.(LOCAL_KEY);
             if (saved?.schema === 1 && Array.isArray(saved.files)) for (const [path, operations] of saved.files) {
@@ -86,6 +89,26 @@ export class FreeTextService {
         else map.set(key, { key, box: clone(box), deleted, version: ++this.sequence });
         if (!map.size) this.pending.delete(file.path);
         this.errors.delete(file.path); this.changed(file.path);
+    }
+    setHighlightColor(color: string) {
+        if (!/^#[\da-f]{6}$/i.test(color)) return;
+        this.highlightColor = color; this.plugin.app.saveLocalStorage?.('pdf-plus-highlight-color', color);
+    }
+    stageHighlight(file: TFile, page: number, rects: TextBox['rect'][]) {
+        this.initialize();
+        if (this.saving.has(file.path)) throw new Error('正在保存，请稍后继续标注');
+        if (!rects.length) return;
+        let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
+        const key = `highlight:${crypto.randomUUID()}`;
+        map.set(key, { key, kind: 'highlight', rects: clone(rects), opacity: this.plugin.settings.writeHighlightToFileOpacity,
+            box: { page, rect: [...rects[0]], text: '[高亮]', fontSize: 12, color: this.highlightColor }, version: ++this.sequence });
+        this.errors.delete(file.path); this.changed(file.path);
+    }
+    undoHighlight(file: TFile) {
+        if (this.saving.has(file.path)) return;
+        const map = this.pending.get(file.path); if (!map) return;
+        const last = [...map.values()].filter(op=>op.kind === 'highlight').sort((a,b)=>b.version-a.version)[0];
+        if (last) { map.delete(last.key); if (!map.size) this.pending.delete(file.path); this.changed(file.path); }
     }
     restore(file: TFile, key: string, operation?: TextOperation) {
         let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
@@ -146,7 +169,7 @@ export class FreeTextService {
             }
             if (!current?.size) this.pending.delete(file.path);
             this.indexes.delete(file.path); this.persistNow();
-            new Notice('PDF 文字更改已保存，请等待文件同步完成。');
+            new Notice('PDF 文字与高亮更改已保存，请等待文件同步完成。');
         });
         this.queue = task;
         try { await task; }

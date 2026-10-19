@@ -737,7 +737,7 @@ body.pdf-plus-vim-hint-inverted {
 .pdf-sync-text-selection .textLayer ::selection { background: #1a73e866; }
 .pdf-sync-region-mode .page { cursor: crosshair !important; touch-action: none; }
 .pdf-sync-region-mode .textLayer { user-select: none !important; -webkit-user-select: none !important; }
-.pdf-sync-highlight-region { position: absolute; z-index: 100; background: #ffdf0059; border: 1px solid #d1a800; pointer-events: none; }
+.pdf-sync-highlight-region { position: absolute; z-index: 100; background: var(--pdf-sync-highlight-color, #ffdf00); opacity: .35; border: 1px solid var(--pdf-sync-highlight-color, #d1a800); pointer-events: none; }
 .pdf-sync-bookmarks { position: absolute; top: 56px; right: 12px; z-index: 110; width: min(340px, calc(100% - 24px)); max-height: calc(100% - 80px); overflow: auto; background: var(--background-primary); color: var(--text-normal); border: 1px solid var(--background-modifier-border); border-radius: 10px; box-shadow: 0 4px 20px #0002; padding: 12px; }
 .pdf-sync-bookmarks[hidden] { display: none; }
 .pdf-sync-bookmarks-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -755,3 +755,6 @@ body.pdf-plus-vim-hint-inverted {
 .pdf-sync-region-button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; white-space: nowrap; flex-shrink: 0; font-size: 12px; }
 .pdf-sync-region-button svg { width: 16px; height: 16px; }
 .pdf-sync-region-button[aria-pressed="true"] { color: #fff; background: #1a73e8; }
+
+.pdf-sync-highlight-draft { position: absolute; z-index: 19; pointer-events: none; mix-blend-mode: multiply; }
+.pdf-sync-highlight-color { width: 28px; height: 28px; padding: 2px; flex-shrink: 0; cursor: pointer; }

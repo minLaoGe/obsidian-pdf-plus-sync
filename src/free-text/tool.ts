@@ -31,7 +31,7 @@ export class FreeTextTool extends Component {
         const group = this.toolbar.createDiv({ cls: 'pdf-sync-text-tools' });
         this.button = group.createEl('button', { cls: 'clickable-icon pdf-plus-free-text-button', attr: { 'aria-label': '添加文字', type: 'button' } });
         setIcon(this.button, 'type'); setTooltip(this.button, '添加文字 · 双击页面输入');
-        this.saveButton = group.createEl('button', { cls: 'pdf-sync-save', attr: { type: 'button', 'aria-label': '保存 PDF 文字更改' } });
+        this.saveButton = group.createEl('button', { cls: 'pdf-sync-save', attr: { type: 'button', 'aria-label': '统一保存 PDF 文字与高亮' } });
         setIcon(this.saveButton.createSpan(), 'save');
         this.label = this.saveButton.createSpan();
         this.registerDomEvent(this.button, 'click', () => {
@@ -105,7 +105,7 @@ export class FreeTextTool extends Component {
         this.label.textContent = state.saving ? '正在保存…' : state.error ? '重试保存' : state.count ? `保存更改 · ${state.count}` : '已保存';
         this.saveButton.disabled = state.saving || (!state.count && !this.active);
         this.saveButton.toggleClass('has-changes', !!state.count);
-        this.saveButton.setAttribute('title', state.error ?? (state.count ? '写入 PDF · Ctrl/Cmd+S' : '文字更改已保存到 PDF'));
+        this.saveButton.setAttribute('title', state.error ?? (state.count ? '写入 PDF · Ctrl/Cmd+S' : '文字与高亮更改已保存到 PDF'));
     }
     private click(event: MouseEvent) {
         const target = event.target as Element | null;
@@ -143,7 +143,7 @@ export class FreeTextTool extends Component {
         const notes = await promise.catch(() => []);
         if (!this.alive || this.child.file?.path !== file.path || this.active?.page.id === page.id) return;
         page.div.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview').forEach(el => el.remove());
-        const changes = new Map(this.plugin.freeText.changes(file).filter(op => op.box.page === page.id).map(op => [op.key, op]));
+        const changes = new Map(this.plugin.freeText.changes(file).filter(op => op.kind !== 'highlight' && op.box.page === page.id).map(op => [op.key, op]));
         for (const note of notes) {
             const key = note.id!;
             const change = changes.get(key);
@@ -164,15 +164,12 @@ export class FreeTextTool extends Component {
             new Notice('请先选中 PDF 正文，再点击高亮按钮。'); return;
         }
         const file = this.child.file!;
-        if (this.active || this.plugin.freeText.state(file).count) {
-            new Notice('请先保存文字草稿，再高亮正文。'); return;
-        }
         const { beginIndex, beginOffset, endIndex, endOffset } = range.selection;
         try {
             const result = await this.plugin.lib.highlight.writeFile.addAnnotationToTextRange(
-                (target, page, rects) => this.plugin.lib.highlight.writeFile.pdflib.addHighlightAnnotation(target, page, rects),
+                async (target, page, rects) => { this.plugin.freeText.stageHighlight(target, page, rects); return 'draft'; },
                 this.child, range.page, beginIndex, beginOffset, endIndex, endOffset);
-            if (result?.annotationID) new Notice('高亮已写入 PDF，请等待文件同步完成。');
+            if (result?.annotationID) selection.removeAllRanges();
             else new Notice('未能添加高亮，请确认已选中可识别的 PDF 正文。');
         } catch (error) { new Notice(`高亮保存失败：${error instanceof Error ? error.message : String(error)}`); }
     }

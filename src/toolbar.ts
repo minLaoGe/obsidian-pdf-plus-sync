@@ -1,3 +1,5 @@
+import { PDFSelectionTools } from './free-text/selection';
+import { PDFBookmarks } from './bookmarks';
 import { FreeTextTool } from './free-text/tool';
 import { Menu, Platform, setIcon, setTooltip } from 'obsidian';
 
@@ -24,6 +26,8 @@ export class PDFPlusToolbar extends PDFPlusComponent {
     onload() {
         this.addColorPalette();
         this.addChild(new FreeTextTool(this.plugin, this.child, this.toolbar.toolbarLeftEl));
+        this.addChild(new PDFSelectionTools(this.plugin, this.child, this.toolbar.toolbarLeftEl));
+        this.addChild(new PDFBookmarks(this.plugin, this.child, this.toolbar.toolbarLeftEl));
         this.replaceDisplayOptionsDropdown();
         this.addZoomLevelInputEl();
         this.makeDropdownInToolbarHoverable();

@@ -729,3 +729,25 @@ body.pdf-plus-vim-hint-inverted {
 .pdf-sync-custom-color { width: 24px; height: 24px; padding: 2px; border: 1px solid #dadce0; border-radius: 50%; background: conic-gradient(#ea4335, #fbbc04, #34a853, #4285f4, #ea4335); }
 .pdf-sync-floating-toolbar .pdf-sync-format-done { color: #1a73e8; background: #e8f0fe; }
 @media (max-width: 600px) { .pdf-sync-floating-toolbar { gap: 1px; padding: 5px; } .pdf-sync-toolbar-divider { margin: 0 2px; } .pdf-sync-floating-toolbar button { width: 27px; height: 30px; } }
+
+/* Selection is an explicit mode: annotation hit targets cannot intercept dragging. */
+.pdf-sync-text-selection .textLayer, .pdf-sync-text-selection .textLayer span { user-select: text !important; -webkit-user-select: text !important; cursor: text !important; pointer-events: auto !important; }
+.pdf-sync-text-selection .textLayer { z-index: 25 !important; }
+.pdf-sync-text-selection .pdf-sync-note-hit, .pdf-sync-text-selection .pdf-sync-note-preview { pointer-events: none !important; }
+.pdf-sync-text-selection .textLayer ::selection { background: #1a73e866; }
+.pdf-sync-region-mode .page { cursor: crosshair !important; touch-action: none; }
+.pdf-sync-region-mode .textLayer { user-select: none !important; -webkit-user-select: none !important; }
+.pdf-sync-highlight-region { position: absolute; z-index: 100; background: #ffdf0059; border: 1px solid #d1a800; pointer-events: none; }
+.pdf-sync-bookmarks { position: absolute; top: 56px; right: 12px; z-index: 110; width: min(340px, calc(100% - 24px)); max-height: calc(100% - 80px); overflow: auto; background: var(--background-primary); color: var(--text-normal); border: 1px solid var(--background-modifier-border); border-radius: 10px; box-shadow: 0 4px 20px #0002; padding: 12px; }
+.pdf-sync-bookmarks[hidden] { display: none; }
+.pdf-sync-bookmarks-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pdf-sync-bookmarks-header strong { flex: 1; }
+.pdf-sync-bookmarks-header button { font-size: 12px; padding: 4px 6px; }
+.pdf-sync-bookmarks-list details { padding-left: 10px; }
+.pdf-sync-bookmarks-list summary { cursor: pointer; padding: 7px 0; font-weight: 600; }
+.pdf-sync-bookmark-row { display: flex; gap: 4px; align-items: center; padding: 3px 0; }
+.pdf-sync-bookmark-row button { padding: 5px; box-shadow: none; border: none; background: transparent; }
+.pdf-sync-bookmark-row button:hover { background: var(--background-modifier-hover); }
+.pdf-sync-bookmark-row svg { width: 14px; height: 14px; }
+.pdf-sync-bookmark-jump { flex: 1; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.pdf-sync-bookmarks-empty { color: var(--text-muted); font-size: 13px; }

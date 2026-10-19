@@ -13,10 +13,21 @@ export class PDFBookmarks extends Component {
     private generation = 0;
     constructor(private plugin: PDFPlus, private child: PDFViewerChild, private toolbar: HTMLElement) { super(); }
     onload() {
-        this.button = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '书签目录', title: '打开 PDF 书签目录' } });
+        this.button = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '书签目录', title: '书签目录 · Esc 关闭；Ctrl/Cmd+P 添加当前页' } });
         setIcon(this.button, 'book-marked');
         this.panel = this.child.containerEl.createDiv({ cls: 'pdf-sync-bookmarks' }); this.panel.hidden = true;
         this.registerDomEvent(this.button, 'click', () => { this.visible = !this.visible; this.panel.hidden = !this.visible; this.button.setAttribute('aria-pressed', String(this.visible)); if (this.visible) void this.refresh(); });
+        this.registerDomEvent(this.child.containerEl.win, 'keydown', event => {
+            const target = event.target as Node | null;
+            if (event.isComposing || !target || !this.child.containerEl.contains(target)) return;
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
+                event.preventDefault(); event.stopImmediatePropagation(); this.edit();
+            } else if (event.key === 'Escape' && this.visible) {
+                event.preventDefault(); event.stopImmediatePropagation(); this.visible = false;
+                this.panel.hidden = true; this.button.setAttribute('aria-pressed', 'false');
+                this.child.containerEl.setAttribute('tabindex', '-1'); this.child.containerEl.focus();
+            }
+        }, true);
         const update = () => { if (this.visible) void this.refresh(); };
         this.registerEvent(this.plugin.app.vault.on('create', update));
         this.registerEvent(this.plugin.app.vault.on('modify', update));
@@ -58,7 +69,7 @@ export class PDFBookmarks extends Component {
         const token = ++this.generation, file = this.child.file;
         this.panel.empty();
         const header = this.panel.createDiv({ cls: 'pdf-sync-bookmarks-header' }); header.createEl('strong', { text: '书签目录' });
-        const add = header.createEl('button', { text: '+ 添加当前页' }); add.onclick = () => this.edit();
+        const add = header.createEl('button', { text: '+ 添加当前页', attr: { title: 'Ctrl/Cmd+P' } }); add.onclick = () => this.edit();
         const close = header.createEl('button', { text: '×', attr: { 'aria-label': '关闭书签目录' } }); close.onclick = () => { this.visible = false; this.panel.hidden = true; this.button.setAttribute('aria-pressed', 'false'); };
         const list = this.panel.createDiv({ cls: 'pdf-sync-bookmarks-list' });
         if (!file) { list.setText('请先打开笔记库中的 PDF'); return; }

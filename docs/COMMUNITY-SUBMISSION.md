@@ -22,7 +22,7 @@ Verified upstream latest default-branch commit:
 https://github.com/RyotaUshio/obsidian-pdf-plus/commit/6a3218b9c506076b405438489e614bc9e22b833b
 Date: 2025-08-30. This exceeds six months as of the check date; the repository is not archived. This date alone does not prove the author is unreachable or authorize immediate submission.
 
-No publicly verifiable approval or contact record has been supplied. Obtain explicit public approval, or document contact and allow 30 days under the official inactive-maintainer process. The proposed issue is in UPSTREAM-PERMISSION-REQUEST.md; it has NOT been posted. Posting requires the user's explicit authorization to contact the author.
+The user explicitly authorized posting the prepared request. Public contact was submitted by minLaoGe on 2026-10-19 at 11:34:02 UTC: https://github.com/RyotaUshio/obsidian-pdf-plus/issues/592 . The issue is open; permission has not yet been granted. The 30-day interval ends 2026-11-18 at 11:34:02 UTC. This date is an eligibility checkpoint, not automatic approval: recheck the response and current official policy before submission. The posted body is retained in UPSTREAM-PERMISSION-REQUEST.md.
 
 ## Release changes to complete after eligibility is established
 
@@ -45,7 +45,7 @@ Attribution: Independently maintained by minLaoGe, based on PDF++ 0.40.31 by Ryo
 
 ## User-side information needed
 
-1. Any existing public approval from the original author, or authorization to post the prepared request.
+1. A public approval response, or a policy-eligible conclusion after the documented contact/wait process. Contact authorization is complete.
 2. Obsidian community account access and GitHub connection when the submission is eligible.
 
 No code, installed settings, plugin ID, or normal-release status was changed as part of this preparation.

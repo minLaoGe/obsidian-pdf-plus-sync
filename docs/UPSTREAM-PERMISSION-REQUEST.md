@@ -1,4 +1,7 @@
-# Proposed public GitHub issue
+# Public GitHub permission request
+
+Posted with user authorization: https://github.com/RyotaUshio/obsidian-pdf-plus/issues/592
+Created: 2026-10-19T11:34:02Z by minLaoGe. Awaiting response.
 
 Destination: https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new
 

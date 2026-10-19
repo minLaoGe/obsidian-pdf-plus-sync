@@ -1,9 +1,9 @@
 {
     "id": "pdf-plus",
     "name": "PDF++ Sync",
-    "version": "0.40.31",
+    "version": "0.41.0",
     "minAppVersion": "1.5.8",
-    "description": "PDF++ continuation with vault-synced reading positions, annotations, and note integration.",
+    "description": "Editable PDF text annotations and cross-device reading progress, based on PDF++.",
     "author": "minLaoGe; based on PDF++ by Ryota Ushio",
     "authorUrl": "https://github.com/minLaoGe/obsidian-pdf-plus-sync",
     "isDesktopOnly": false

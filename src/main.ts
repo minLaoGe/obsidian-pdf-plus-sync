@@ -1,3 +1,4 @@
+import { FreeTextService } from './free-text/service';
 import { ReadingProgressSync } from './reading-progress';
 import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, apiVersion, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
@@ -89,7 +90,13 @@ export default class PDFPlus extends Plugin {
 	requiresDataviewInlineFieldsMigration = false;
 	isDebugMode: boolean = false;
 
-	readingProgress: ReadingProgressSync;
+	freeText = new FreeTextService(this);
+    readingProgress: ReadingProgressSync;
+    readingProgressReloads = new WeakSet<PDFViewerComponent>();
+    async readingProgressPreserveReload(viewer: PDFViewerComponent, load: () => Promise<void>) {
+        this.readingProgressReloads.add(viewer);
+        try { await load(); } finally { this.readingProgressReloads.delete(viewer); }
+    }
 
 	async onload() {
 		this.checkVersion();
@@ -101,6 +108,7 @@ export default class PDFPlus extends Plugin {
 		await this.loadSettings();
 		await this.saveSettings();
 		this.readingProgress = this.addChild(new ReadingProgressSync(this));
+		await this.readingProgress.initialize();
 
 		this.domManager = this.addChild(new DomManager(this));
 		this.domManager.registerCalloutRenderer();

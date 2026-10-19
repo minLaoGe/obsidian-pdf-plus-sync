@@ -1596,7 +1596,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.contentEl.empty();
 		this.promises = [];
 		this.component.load();
-        new Setting(this.contentEl).setName('跨设备 PDF 阅读进度').setDesc('同步 PDF++ Reading Progress 目录及 PDF，各端安装此版本。重新打开时续读，页码链接优先。')
+        new Setting(this.contentEl).setName('跨设备 PDF 阅读进度').setDesc('统一数据目录：PDF++ Sync/reading-progress。旧进度自动迁移。各端同步此目录与 PDF；可用命令“恢复已同步的 PDF 阅读进度”重新读取。')
             .addToggle(toggle => toggle.setValue(this.plugin.settings.readingProgressSync).onChange(async value => {
                 this.plugin.settings.readingProgressSync = value;
                 await this.plugin.saveSettings();

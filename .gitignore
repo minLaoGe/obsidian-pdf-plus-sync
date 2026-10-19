@@ -1,5 +1,5 @@
 # vscode
-.vscode 
+.vscode
 
 # Intellij
 *.iml
@@ -23,3 +23,7 @@ data.json
 
 # Anystyle input files
 anystyle/
+
+# Generated PDF fixtures and local verification output
+tmp/
+output/

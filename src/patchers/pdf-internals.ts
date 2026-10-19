@@ -86,8 +86,9 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
     plugin.register(around(pdfViewerComponent.constructor.prototype, {
         loadFile(old) {
             return async function (this: PDFViewerComponent, file: TFile, subpath?: string) {
+                plugin.readingProgress.beforeOpen(this);
                 const ret = await old.call(this, file, subpath);
-                await plugin.readingProgress.open(this, file, subpath);
+                await plugin.readingProgress.open(this, file, subpath, plugin.readingProgressReloads.has(this));
 
                 this.then((child) => {
                     if (!this.visualizer || this.visualizer.file !== file) {

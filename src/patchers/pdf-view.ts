@@ -64,7 +64,8 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                     const self = this as PDFView;
                     const state = self.getState();
                     const subpath = lib.viewStateToSubpath(state);
-                    return self.viewer.loadFile(file, subpath ?? undefined);
+                    plugin.readingProgress.restored.delete(self.viewer);
+                    return plugin.readingProgressPreserveReload(self.viewer, () => self.viewer.loadFile(file, subpath ?? undefined));
                 };
             }
         }));

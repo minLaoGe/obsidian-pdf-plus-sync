@@ -1,3 +1,4 @@
+import { FreeTextTool } from './free-text/tool';
 import { Menu, Platform, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
@@ -22,6 +23,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
 
     onload() {
         this.addColorPalette();
+        this.addChild(new FreeTextTool(this.plugin, this.child, this.toolbar.toolbarLeftEl));
         this.replaceDisplayOptionsDropdown();
         this.addZoomLevelInputEl();
         this.makeDropdownInToolbarHoverable();

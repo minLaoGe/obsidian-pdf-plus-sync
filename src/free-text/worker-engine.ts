@@ -1,4 +1,4 @@
-import { PDFDocument, PDFHexString, PDFString } from '@cantoo/pdf-lib';
+import { PDFDocument, PDFHexString, PDFString, PDFDict, PDFName } from '@cantoo/pdf-lib';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex } from '@noble/hashes/utils';
 import { annotationRef, deleteTextBox, readTextBox, textBoxFingerprint, validateTextBox, writeTextBox } from './pdf';
@@ -7,7 +7,7 @@ import { renderOffscreen } from './render';
 
 export interface TextOperation { kind?: 'highlight'; rects?: TextBox['rect'][]; opacity?: number; key: string; box: TextBox; deleted?: boolean; version: number; }
 export interface BatchInput { bytes: ArrayBuffer; operations: TextOperation[]; author: string; }
-export interface BatchOutput { bytes: Uint8Array; inputDigest: string; notes: Record<string, TextBox>; }
+export interface BatchOutput { bytes: Uint8Array; inputDigest: string; notes: Record<string, TextBox>; originals?: Record<string, TextBox | null>; }
 export function digest(bytes: ArrayBuffer | Uint8Array): string { return bytesToHex(sha256(new Uint8Array(bytes))); }
 export async function indexNotes(bytes: ArrayBuffer): Promise<TextBox[]> {
     const doc = await PDFDocument.load(bytes);
@@ -24,9 +24,17 @@ export async function processBatch(input: BatchInput, renderer = renderOffscreen
     const inputDigest = digest(input.bytes);
     const doc = await PDFDocument.load(input.bytes);
     const notes: Record<string, TextBox> = {};
+    const originals: Record<string, TextBox | null> = {};
     for (const operation of input.operations) {
         const box = { ...operation.box, rect: [...operation.box.rect] as TextBox['rect'] };
         if (operation.kind === 'highlight') {
+            originals[operation.key] = null;
+            const existing = box.id ? annotationRef(doc.getPage(box.page-1), box.id) : undefined;
+            if (box.id) {
+                if (!existing || doc.context.lookup(existing, PDFDict).get(PDFName.of('Subtype'))?.toString() !== '/Highlight') throw new Error('高亮已被其他操作修改，请重新打开');
+                doc.getPage(box.page-1).node.removeAnnot(existing);
+            }
+            if (operation.deleted) continue;
             const rects = operation.rects ?? [];
             if (!Number.isSafeInteger(box.page) || box.page < 1 || box.page > doc.getPageCount() || !/^#[\da-f]{6}$/i.test(box.color) || !rects.length || rects.length > 10000) throw new Error('无效高亮草稿');
             const page = doc.getPage(box.page-1), bounds = page.getCropBox();
@@ -38,9 +46,11 @@ export async function processBatch(input: BatchInput, renderer = renderOffscreen
                 CA: Math.max(0.05,Math.min(1,operation.opacity ?? 0.35)), Border: [0,0,0], F: 4,
                 T: PDFHexString.fromText(input.author || 'PDF++ Sync'), M: PDFString.fromDate(new Date()),
                 NM: PDFHexString.fromText(operation.key) });
-            page.node.addAnnot(doc.context.register(annotation));
+            const ref = doc.context.register(annotation); page.node.addAnnot(ref);
+            notes[operation.key] = { ...box, id: ref.generationNumber ? `${ref.objectNumber}R${ref.generationNumber}` : `${ref.objectNumber}R` };
             continue;
         }
+        originals[operation.key] = box.id ? readTextBox(doc, box.page, box.id) : null;
         if (box.id) {
             const current = readTextBox(doc, box.page, box.id);
             if (box.source && textBoxFingerprint(current) !== box.source) throw new Error('文字已被其他操作修改，请重新打开后再编辑');
@@ -58,5 +68,5 @@ export async function processBatch(input: BatchInput, renderer = renderOffscreen
         const id = await writeTextBox(doc, box, rendered.png, input.author);
         notes[operation.key] = readTextBox(doc, box.page, id);
     }
-    return { bytes: await doc.save(), inputDigest, notes };
+    return { bytes: await doc.save(), inputDigest, notes, originals };
 }

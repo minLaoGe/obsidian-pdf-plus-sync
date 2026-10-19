@@ -10,11 +10,11 @@ export class PDFSelectionTools extends Component {
     constructor(private plugin: PDFPlus, private child: PDFViewerChild, private toolbar: HTMLElement) { super(); }
     onload() {
         const text = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '选择 PDF 正文', title: '选择文本模式：拖动选择正文，再点击荧光笔' } }); setIcon(text, 'text-cursor');
-        const region = this.toolbar.createEl('button', { cls: 'pdf-sync-region-button', attr: { type: 'button', 'aria-label': '框选高亮（支持扫描 PDF）', title: '拖动框选高亮区域，无需文字层' } }); setIcon(region.createSpan(), 'scan-line'); region.createSpan({ text: '框选高亮' });
+        const region = this.toolbar.createEl('button', { cls: 'pdf-sync-region-button', attr: { type: 'button', 'aria-label': '框选高亮（支持扫描 PDF）', title: '拖动框选高亮区域；任意模式下 Alt+拖动也可框选' } }); setIcon(region.createSpan(), 'scan-line'); region.createSpan({ text: '框选高亮' });
         const color = this.toolbar.createEl('input', { type: 'color', cls: 'pdf-sync-highlight-color', attr: { 'aria-label': '高亮颜色', title: '选择正文与框选的高亮颜色' } });
         this.plugin.freeText.initialize(); color.value = this.plugin.freeText.highlightColor;
         this.registerDomEvent(color, 'input', () => { this.plugin.freeText.setHighlightColor(color.value); this.child.containerEl.style.setProperty('--pdf-sync-highlight-color', color.value); });
-        const undo = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '撤销最近一条未保存高亮', title: '撤销最近一条未保存高亮' } }); setIcon(undo, 'undo-2');
+        const undo = this.toolbar.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-label': '撤销上一步 · Ctrl+Z', title: '撤销上一步 · Ctrl+Z' } }); setIcon(undo, 'undo-2');
         this.registerDomEvent(undo, 'click', () => { if (this.child.file) this.plugin.freeText.undoHighlight(this.child.file); });
         this.buttons.push(text, region, color, undo);
         const previews = () => this.renderDrafts();
@@ -23,19 +23,19 @@ export class PDFSelectionTools extends Component {
         this.register(this.plugin.freeText.subscribe(path => { if (path === this.child.file?.path) previews(); }));
         previews();
         const mode = this.plugin.app.loadLocalStorage?.('pdf-plus-highlight-mode');
-        this.region = mode === 'region'; this.selecting = mode === 'text'; this.update(text, region);
+        this.region = mode !== 'text' && mode !== 'none'; this.selecting = mode === 'text'; this.update(text, region);
         this.registerDomEvent(text, 'click', () => { this.stop(); this.selecting = !this.selecting; this.region = false; this.update(text, region); if (this.selecting) void this.describeTextLayer(text, region); });
         this.registerDomEvent(region, 'click', () => { this.stop(); this.region = !this.region; this.selecting = false; this.update(text, region); if (this.region) new Notice('框选高亮已开启：按住鼠标拖出矩形，松开暂存，可连续框选；最后点击“保存更改”。Esc 退出。'); });
         // Entering the text annotation tool restores annotation hit targets.
         this.registerDomEvent(this.toolbar, 'click', event => { if ((event.target as Element)?.closest('.pdf-plus-free-text-button')) { this.stop(); this.region = this.selecting = false; this.update(text, region); } }, true);
         this.registerDomEvent(this.child.containerEl, 'pointerdown', event => {
-            if (!this.region || event.button !== 0) return;
+            if ((!this.region && !event.altKey) || event.button !== 0) return;
             const element = (event.target as Element)?.closest<HTMLElement>('.page[data-page-number]');
             if (!element || !this.child.file) return;
             if (!this.plugin.lib.isEditable(this.child)) { new Notice('请先在 PDF++ Sync 设置中开启 Enable PDF editing。'); return; }
-            if (this.plugin.freeText.state(this.child.file).saving) { new Notice('PDF 正在保存，请稍后再框选高亮。'); return; }
             const page = this.child.getPage(Number(element.dataset.pageNumber)); if (!page) return;
             event.preventDefault(); event.stopImmediatePropagation();
+            this.child.containerEl.setAttribute('tabindex', '-1'); this.child.containerEl.focus();
             const bounds = page.div.getBoundingClientRect(), x = event.clientX-bounds.left, y = event.clientY-bounds.top;
             const box = page.div.createDiv({ cls: 'pdf-sync-highlight-region' });
             this.drag = { page, x, y, lastX: x, lastY: y, pointer: event.pointerId, box }; this.draw();
@@ -64,7 +64,7 @@ export class PDFSelectionTools extends Component {
         this.child.containerEl.querySelectorAll('.pdf-sync-highlight-draft').forEach(el=>el.remove());
         const file = this.child.file; if (!file) return;
         for (const op of this.plugin.freeText.changes(file)) {
-            if (op.kind !== 'highlight') continue;
+            if (op.kind !== 'highlight' || op.deleted || op.box.id) continue;
             const page = this.child.getPage(op.box.page); if (!page?.div || !page.viewport) continue;
             for (const rect of op.rects ?? []) {
                 const [x0,y0,x1,y1] = page.viewport.convertToViewportRectangle(rect);

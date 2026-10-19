@@ -44,7 +44,7 @@ export class FreeTextTool extends Component {
         this.registerDomEvent(highlight, 'click', () => { void this.highlightSelection(); });
         this.registerDomEvent(this.saveButton, 'click', () => { void this.saveAll(); });
         this.registerDomEvent(this.child.containerEl, 'click', event => {
-            if ((event.target as Element)?.closest?.('.pdf-sync-note-hit, .pdf-sync-note-preview')) {
+            if ((event.target as Element)?.closest?.('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask')) {
                 event.preventDefault(); event.stopImmediatePropagation();
             }
         }, true);
@@ -55,6 +55,14 @@ export class FreeTextTool extends Component {
             if (event.isComposing) return;
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && this.child.file) {
                 event.preventDefault(); event.stopImmediatePropagation(); void this.saveAll();
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && this.child.file) {
+                const element = target as HTMLElement;
+                if (element.closest?.('input, textarea') && !element.closest('.pdf-sync-editor')) return;
+                event.preventDefault(); event.stopImmediatePropagation();
+                if (!this.commitCurrent()) return;
+                this.child.containerEl.setAttribute('tabindex', '-1'); this.child.containerEl.focus();
+                void this.plugin.freeText.undo(this.child.file, event.shiftKey).then(()=>this.refresh()).catch(error=>new Notice(`撤销失败：${error.message ?? error}`));
             }
             if (event.key === 'Escape') { this.cancelCurrent(); this.setPlacing(false); }
         }, true);
@@ -85,7 +93,7 @@ export class FreeTextTool extends Component {
             this.commitCurrent(); this.alive = false; group.remove(); this.setPlacing(false); this.closeEditor();
             window.clearTimeout(this.inputTimer);
             if (this.layoutFrame !== undefined) this.child.containerEl.win.cancelAnimationFrame(this.layoutFrame);
-            this.child.containerEl.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview').forEach(el => el.remove());
+            this.child.containerEl.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask').forEach(el => el.remove());
         });
     }
     private editable(): boolean {
@@ -110,7 +118,7 @@ export class FreeTextTool extends Component {
     private click(event: MouseEvent) {
         const target = event.target as Element | null;
         if (!target?.closest || target.closest('.pdf-sync-editor, .pdf-sync-floating-toolbar')) return;
-        const hit = target.closest<HTMLElement>('.pdf-sync-note-hit, .pdf-sync-note-preview');
+        const hit = target.closest<HTMLElement>('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask');
         if (hit) {
             if (!this.editable()) return;
             event.preventDefault(); event.stopImmediatePropagation();
@@ -142,16 +150,23 @@ export class FreeTextTool extends Component {
         }
         const notes = await promise.catch(() => []);
         if (!this.alive || this.child.file?.path !== file.path || this.active?.page.id === page.id) return;
-        page.div.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview').forEach(el => el.remove());
+        page.div.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask').forEach(el => el.remove());
+        for (const op of this.plugin.freeText.changes(file)) {
+            if (op.kind !== 'highlight' || !op.deleted || !op.box.id || op.box.page !== page.id) continue;
+            for (const rect of op.rects ?? [op.box.rect]) {
+                const mask = page.div.createDiv({ cls: 'pdf-sync-highlight-mask' });
+                this.position(mask, page, { ...op.box, rect }); this.restorePageRegion(mask, page, { ...op.box, rect });
+            }
+        }
         const changes = new Map(this.plugin.freeText.changes(file).filter(op => op.kind !== 'highlight' && op.box.page === page.id).map(op => [op.key, op]));
         for (const note of notes) {
-            const key = note.id!;
+            const key = this.plugin.freeText.keyFor(file, note.id!);
             const change = changes.get(key);
             if (change) {
                 this.preview(page, note, key, true); // Mask the previous appearance until the batch is saved.
                 if (!change.deleted) this.preview(page, change.box, key);
                 changes.delete(key);
-            } else this.hit(page, this.plugin.freeText.cached(file, key) ?? note, key);
+            } else this.hit(page, this.plugin.freeText.cached(file, note.id!) ?? note, key);
         }
         for (const [key, change] of changes) if (!change.deleted) this.preview(page, change.box, key);
         if (notes.length) void this.plugin.freeText.preload(file).catch(error => console.debug('PDF text index:', error));

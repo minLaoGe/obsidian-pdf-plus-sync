@@ -9,6 +9,7 @@ import type { PdfTextRunner } from './worker-client';
 export { renderText } from './render';
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+interface EditHistory { key: string; before?: TextOperation; after?: TextOperation; time: number; externalUndo?: () => Promise<void>; externalRedo?: () => Promise<void>; }
 const LOCAL_KEY = 'pdf-plus-sync-text-drafts-v2';
 
 /** Metadata comes from the already-loaded PDF.js page, never a synchronous PDF parse on click. */
@@ -28,6 +29,11 @@ export class FreeTextService {
     private queue: Promise<unknown> = Promise.resolve();
     private runner: PdfTextRunner;
     private pending = new Map<string, Map<string, TextOperation>>();
+    private history = new Map<string, EditHistory[]>();
+    private future = new Map<string, EditHistory[]>();
+    private aliases = new Map<string, Map<string, string>>();
+    private originals = new Map<string, Map<string, TextBox | null>>();
+    private committed = new Map<string, Map<string, TextBox | null>>();
     private indexes = new Map<string, { stamp: string; notes: Map<string, TextBox>; ready: Promise<void> }>();
     private saving = new Set<string>();
     private errors = new Map<string, string>();
@@ -52,9 +58,10 @@ export class FreeTextService {
                     if (!b || typeof operation.key !== 'string' || typeof b.text !== 'string' || b.text.length > 5000
                         || !Array.isArray(b.rect) || b.rect.length !== 4 || !b.rect.every(Number.isFinite)
                         || !Number.isSafeInteger(b.page) || b.page < 1 || !Number.isFinite(operation.version)) continue;
+                    if (b.id) { let aliases = this.aliases.get(path); if (!aliases) this.aliases.set(path, aliases = new Map()); aliases.set(b.id, operation.key); }
                     map.set(operation.key, operation); this.sequence = Math.max(this.sequence, operation.version);
                 }
-                if (map.size) this.pending.set(path, map);
+                if (map.size) { this.pending.set(path, map); this.history.set(path, [...map.values()].map(op=>({ key: op.key, after: clone(op), time: 0 }))); }
             }
         } catch { /* Preserve availability if client-local storage is unavailable. */ }
     }
@@ -81,10 +88,11 @@ export class FreeTextService {
         return { count: this.changes(path).length, saving: this.saving.has(path), error: this.errors.get(path) };
     }
     stage(file: TFile, key: string, box: TextBox, deleted = false) {
-        this.initialize();
+        this.initialize(); key = this.keyFor(file, key);
         let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
         const previous = map.get(key);
         if (previous && previous.deleted === deleted && JSON.stringify(previous.box) === JSON.stringify(box)) return;
+        this.record(file.path, key, previous, !box.id && (deleted || !box.text.trim()) ? undefined : { key, box: clone(box), deleted, version: this.sequence + 1 });
         if (!box.id && (deleted || !box.text.trim())) map.delete(key);
         else map.set(key, { key, box: clone(box), deleted, version: ++this.sequence });
         if (!map.size) this.pending.delete(file.path);
@@ -96,21 +104,62 @@ export class FreeTextService {
     }
     stageHighlight(file: TFile, page: number, rects: TextBox['rect'][]) {
         this.initialize();
-        if (this.saving.has(file.path)) throw new Error('正在保存，请稍后继续标注');
         if (!rects.length) return;
         let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
         const key = `highlight:${crypto.randomUUID()}`;
-        map.set(key, { key, kind: 'highlight', rects: clone(rects), opacity: this.plugin.settings.writeHighlightToFileOpacity,
-            box: { page, rect: [...rects[0]], text: '[高亮]', fontSize: 12, color: this.highlightColor }, version: ++this.sequence });
+        const operation: TextOperation = { key, kind: 'highlight', rects: clone(rects), opacity: this.plugin.settings.writeHighlightToFileOpacity,
+            box: { page, rect: [...rects[0]], text: '[高亮]', fontSize: 12, color: this.highlightColor }, version: ++this.sequence };
+        map.set(key, operation); this.record(file.path, key, undefined, operation);
         this.errors.delete(file.path); this.changed(file.path);
     }
-    undoHighlight(file: TFile) {
-        if (this.saving.has(file.path)) return;
-        const map = this.pending.get(file.path); if (!map) return;
-        const last = [...map.values()].filter(op=>op.kind === 'highlight').sort((a,b)=>b.version-a.version)[0];
-        if (last) { map.delete(last.key); if (!map.size) this.pending.delete(file.path); this.changed(file.path); }
+    keyFor(file: TFile, key: string) { return this.aliases.get(file.path)?.get(key) ?? key; }
+    private record(path: string, key: string, before?: TextOperation, after?: TextOperation) {
+        let stack = this.history.get(path); if (!stack) this.history.set(path, stack = []);
+        const last = stack[stack.length-1], now = Date.now();
+        const typing = before && after && before.box.text !== after.box.text && before.box.color === after.box.color && before.box.fontSize === after.box.fontSize;
+        if (typing && last?.key === key && now-last.time < 600 && last.after && last.after.box.text === before.box.text) { last.after = clone(after); last.time = now; }
+        else stack.push({ key, before: before ? clone(before) : undefined, after: after ? clone(after) : undefined, time: now });
+        this.future.delete(path);
     }
+    recordExternal(file: TFile, undo: () => Promise<void>, redo: () => Promise<void>) {
+        let stack = this.history.get(file.path); if (!stack) this.history.set(file.path, stack = []);
+        stack.push({ key: `external:${crypto.randomUUID()}`, time: Date.now(), externalUndo: undo, externalRedo: redo }); this.future.delete(file.path);
+    }
+    async undo(file: TFile, redo = false) {
+        // A save in flight must finish before inverse operations can refer to its new PDF object IDs.
+        if (this.saving.has(file.path)) { await this.queue.catch(()=>{}); }
+        const from = (redo ? this.future : this.history).get(file.path);
+        const entry = from?.pop(); if (!entry) return;
+        try {
+            if (entry.externalUndo) await (redo ? entry.externalRedo! : entry.externalUndo)();
+            else this.applyHistory(file, entry, redo ? entry.after : entry.before);
+            const destination = redo ? this.history : this.future;
+            let stack = destination.get(file.path); if (!stack) destination.set(file.path, stack = []); stack.push(entry);
+            this.errors.delete(file.path); this.changed(file.path);
+        } catch (error) { from!.push(entry); throw error; }
+    }
+    private applyHistory(file: TFile, entry: EditHistory, target?: TextOperation) {
+        const saved = this.committed.get(file.path), hasSaved = saved?.has(entry.key), current = saved?.get(entry.key);
+        let operation = target ? clone(target) : undefined;
+        if (hasSaved) {
+            if (!operation) {
+                const original = this.originals.get(file.path)?.get(entry.key);
+                if (original) operation = { key: entry.key, box: clone(original), version: 0 };
+                else if (current) operation = { ...(entry.after ?? entry.before)!, key: entry.key, box: clone(current), deleted: true, version: 0 };
+            }
+            if (operation) {
+                operation.box.id = current?.id; operation.box.source = current?.source; operation.box.originalText = current?.text;
+                if (operation.deleted && !current) operation = undefined;
+            }
+        }
+        let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
+        if (operation) map.set(entry.key, { ...operation, version: ++this.sequence }); else map.delete(entry.key);
+        if (!map.size) this.pending.delete(file.path);
+    }
+    undoHighlight(file: TFile) { void this.undo(file).catch(error => new Notice(`撤销失败：${error.message ?? error}`)); }
     restore(file: TFile, key: string, operation?: TextOperation) {
+        key = this.keyFor(file, key);
+        this.record(file.path, key, this.pending.get(file.path)?.get(key), operation);
         let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
         if (operation) map.set(key, { ...clone(operation), version: ++this.sequence }); else map.delete(key);
         if (!map.size) this.pending.delete(file.path); this.changed(file.path);
@@ -156,8 +205,14 @@ export class FreeTextService {
                 throw new Error('PDF 已被其他操作或同步修改；未覆盖文件，本机草稿已保留');
             }
             await vault.modifyBinary(file, output.bytes);
+            let saved = this.committed.get(file.path); if (!saved) this.committed.set(file.path, saved = new Map());
+            let originals = this.originals.get(file.path); if (!originals) this.originals.set(file.path, originals = new Map());
+            let aliases = this.aliases.get(file.path); if (!aliases) this.aliases.set(file.path, aliases = new Map());
             const current = this.pending.get(file.path);
             for (const operation of snapshot) {
+                if (!originals.has(operation.key)) originals.set(operation.key, output.originals?.[operation.key] ?? null);
+                saved.set(operation.key, output.notes[operation.key] ?? null);
+                const note = output.notes[operation.key]; if (note?.id) aliases.set(note.id, operation.key);
                 const newer = current?.get(operation.key); if (!newer) continue;
                 if (newer.version === operation.version) current!.delete(operation.key);
                 else {

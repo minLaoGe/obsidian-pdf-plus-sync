@@ -44,8 +44,12 @@ export class PDFBookmarks extends Component {
             if (!title.trim()) { new Notice('请输入书签名称'); return; }
             button.setDisabled(true);
             try {
-                await this.write({ schema: 1, id: record?.id ?? crypto.randomUUID(), file: file.path, page,
-                    title: title.trim().slice(0, 200), folder: folder.split('/').map(s => s.trim()).filter(Boolean).join('/').slice(0, 300), updated: Date.now() });
+                const next: Bookmark = { schema: 1, id: record?.id ?? crypto.randomUUID(), file: file.path, page,
+                    title: title.trim().slice(0, 200), folder: folder.split('/').map(s => s.trim()).filter(Boolean).join('/').slice(0, 300), updated: Date.now() };
+                await this.write(next);
+                this.plugin.freeText.recordExternal(file,
+                    async () => { await this.write(record ? { ...record, updated: Date.now() } : { ...next, deleted: true, updated: Date.now() }); await this.refresh(); },
+                    async () => { await this.write({ ...next, updated: Date.now() }); await this.refresh(); });
                 modal.close(); await this.refresh();
             } catch (error) { new Notice(`书签保存失败：${error.message ?? error}`); button.setDisabled(false); }
         })); modal.open();
@@ -82,7 +86,11 @@ export class PDFBookmarks extends Component {
                 jump.onclick = () => { if (b.page > this.child.pdfViewer.pagesCount) { new Notice('该书签页码已超出 PDF 范围'); return; } this.child.pdfViewer.pdfViewer?.scrollPageIntoView({ pageNumber: b.page }); };
                 const edit = row.createEl('button', { attr: { 'aria-label': `编辑书签 ${b.title}` } }); setIcon(edit, 'pencil'); edit.onclick = () => this.edit(b);
                 const remove = row.createEl('button', { attr: { 'aria-label': `删除书签 ${b.title}` } }); setIcon(remove, 'trash-2');
-                remove.onclick = async () => { try { await this.write({ ...b, deleted: true, updated: Date.now() }); await this.refresh(); } catch (e) { new Notice(`删除失败：${e.message ?? e}`); } };
+                remove.onclick = async () => { try { await this.write({ ...b, deleted: true, updated: Date.now() });
+                    this.plugin.freeText.recordExternal(file,
+                        async () => { await this.write({ ...b, updated: Date.now() }); await this.refresh(); },
+                        async () => { await this.write({ ...b, deleted: true, updated: Date.now() }); await this.refresh(); });
+                    await this.refresh(); } catch (e) { new Notice(`删除失败：${e.message ?? e}`); } };
             }
         } catch (error) { if (token === this.generation) list.setText(`书签读取失败：${error.message ?? error}`); }
     }

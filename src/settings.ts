@@ -1592,8 +1592,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		// Setting tab rendering starts here
 
+		this.component.unload();
 		this.headerContainerEl.empty();
 		this.contentEl.empty();
+		this.items = {};
+		this.headings.clear();
+		this.iconHeadings.clear();
+		this.headerEls.clear();
 		this.promises = [];
 		this.component.load();
         new Setting(this.contentEl).setName('跨设备 PDF 阅读进度').setDesc('统一数据目录：PDF++ Sync/reading-progress。旧进度自动迁移。各端同步此目录与 PDF；可用命令“恢复已同步的 PDF 阅读进度”重新读取。')
@@ -3409,6 +3414,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	async hide() {
+		// Remove listeners before yielding, so an older hide cannot unload a new display.
+		this.component.unload();
 		this.plugin.settings.colors = Object.fromEntries(
 			Object.entries(this.plugin.settings.colors).filter(([name, color]) => name && isHexString(color))
 		);
@@ -3435,6 +3442,5 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.plugin.loadStyle();
 
 		this.promises = [];
-		this.component.unload();
 	}
 }

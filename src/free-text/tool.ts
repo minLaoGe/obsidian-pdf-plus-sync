@@ -44,6 +44,11 @@ export class FreeTextTool extends Component {
         this.registerDomEvent(highlight, 'click', () => { void this.highlightSelection(); });
         const ink = group.createEl('button', { cls: 'clickable-icon pdf-sync-ink-button', attr: { type: 'button', 'aria-label': '画笔', 'aria-pressed': 'false', title: '画笔：在 PDF 页面上书写' } });
         setIcon(ink, 'pen');
+        const colorInput = group.createEl('input', { type: 'color', cls: 'pdf-sync-ink-color', attr: { 'aria-label': '画笔颜色', title: '选择画笔颜色' } });
+        const savedColor = this.plugin.app.loadLocalStorage?.('pdf-plus-ink-color');
+        colorInput.value = typeof savedColor === 'string' && /^#[\da-f]{6}$/i.test(savedColor) ? savedColor : '#d93025';
+        this.registerDomEvent(colorInput, 'input', () => this.plugin.app.saveLocalStorage?.('pdf-plus-ink-color', colorInput.value));
+        let strokeColor = colorInput.value;
         let drawing = false, enabled = false, page: PDFPageView | undefined, points: number[][] = [];
         const toggle = (value: boolean) => { enabled = value; ink.toggleClass('is-active', value); ink.setAttribute('aria-pressed', String(value)); this.child.containerEl.toggleClass('pdf-sync-ink-mode', value); };
         this.registerDomEvent(ink, 'click', () => { if (this.editable() && this.commitCurrent()) { this.setPlacing(false); toggle(!enabled); } });
@@ -53,7 +58,7 @@ export class FreeTextTool extends Component {
             const el = (event.target as Element)?.closest<HTMLElement>('.page[data-page-number]');
             page = el ? this.child.getPage(Number(el.dataset.pageNumber)) : undefined;
             if (!page) return;
-            event.preventDefault(); event.stopImmediatePropagation(); drawing = true; points = [];
+            event.preventDefault(); event.stopImmediatePropagation(); drawing = true; points = []; strokeColor = colorInput.value;
             this.child.containerEl.setPointerCapture(event.pointerId);
             const rect = page.div.getBoundingClientRect(); points.push(page.getPagePoint(event.clientX - rect.left, event.clientY - rect.top));
         }, true);
@@ -64,12 +69,12 @@ export class FreeTextTool extends Component {
             const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left)), y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
             if (points.length >= 10000) return;
             points.push(page.getPagePoint(x, y));
-            this.renderInk(page, points, '#d93025', 2, true);
+            this.renderInk(page, points, strokeColor, 2, true);
         }, true);
         const finish = (event: PointerEvent) => {
             if (!drawing || !page) return; event.preventDefault(); event.stopImmediatePropagation(); drawing = false;
             page.div.querySelectorAll('.pdf-sync-ink-live').forEach(el => el.remove());
-            if (event.type === 'pointerup' && this.child.file && points.length > 1) this.plugin.freeText.stageInk(this.child.file, page.id, points, '#d93025', 2);
+            if (event.type === 'pointerup' && this.child.file && points.length > 1) this.plugin.freeText.stageInk(this.child.file, page.id, points, strokeColor, 2);
             points = []; page = undefined;
         };
         this.registerDomEvent(this.child.containerEl, 'pointerup', finish, true);

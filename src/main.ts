@@ -914,8 +914,8 @@ export default class PDFPlus extends Plugin {
 
 	requireModKeyForLinkHover(id = 'pdf-plus') {
 		// @ts-ignore
-		return this.app.internalPlugins.plugins['page-preview'].instance.overrides[id]
-			?? this.app.workspace.hoverLinkSources[id]?.defaultMod
+		return this.app.internalPlugins?.plugins?.['page-preview']?.instance?.overrides?.[id]
+			?? this.app.workspace.hoverLinkSources?.[id]?.defaultMod
 			?? false;
 	}
 

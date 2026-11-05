@@ -42,6 +42,40 @@ export class FreeTextTool extends Component {
         setIcon(highlight, 'highlighter');
         this.registerDomEvent(highlight, 'pointerdown', event => event.preventDefault());
         this.registerDomEvent(highlight, 'click', () => { void this.highlightSelection(); });
+        const ink = group.createEl('button', { cls: 'clickable-icon pdf-sync-ink-button', attr: { type: 'button', 'aria-label': '画笔', 'aria-pressed': 'false', title: '画笔：在 PDF 页面上书写' } });
+        setIcon(ink, 'pen');
+        let drawing = false, enabled = false, page: PDFPageView | undefined, points: number[][] = [];
+        const toggle = (value: boolean) => { enabled = value; ink.toggleClass('is-active', value); ink.setAttribute('aria-pressed', String(value)); this.child.containerEl.toggleClass('pdf-sync-ink-mode', value); };
+        this.registerDomEvent(ink, 'click', () => { if (this.editable() && this.commitCurrent()) { this.setPlacing(false); toggle(!enabled); } });
+        this.registerDomEvent(this.button, 'click', () => toggle(false));
+        this.registerDomEvent(this.child.containerEl, 'pointerdown', event => {
+            if (!enabled || event.button !== 0 || !this.editable()) return;
+            const el = (event.target as Element)?.closest<HTMLElement>('.page[data-page-number]');
+            page = el ? this.child.getPage(Number(el.dataset.pageNumber)) : undefined;
+            if (!page) return;
+            event.preventDefault(); event.stopImmediatePropagation(); drawing = true; points = [];
+            this.child.containerEl.setPointerCapture(event.pointerId);
+            const rect = page.div.getBoundingClientRect(); points.push(page.getPagePoint(event.clientX - rect.left, event.clientY - rect.top));
+        }, true);
+        this.registerDomEvent(this.child.containerEl, 'pointermove', event => {
+            if (!drawing || !page) return;
+            event.preventDefault(); event.stopImmediatePropagation();
+            const rect = page.div.getBoundingClientRect();
+            const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left)), y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+            if (points.length >= 10000) return;
+            points.push(page.getPagePoint(x, y));
+            this.renderInk(page, points, '#d93025', 2, true);
+        }, true);
+        const finish = (event: PointerEvent) => {
+            if (!drawing || !page) return; event.preventDefault(); event.stopImmediatePropagation(); drawing = false;
+            page.div.querySelectorAll('.pdf-sync-ink-live').forEach(el => el.remove());
+            if (event.type === 'pointerup' && this.child.file && points.length > 1) this.plugin.freeText.stageInk(this.child.file, page.id, points, '#d93025', 2);
+            points = []; page = undefined;
+        };
+        this.registerDomEvent(this.child.containerEl, 'pointerup', finish, true);
+        this.registerDomEvent(this.child.containerEl, 'pointercancel', finish, true);
+        this.registerDomEvent(this.child.containerEl.win, 'keydown', event => { if (event.key === 'Escape' && enabled) toggle(false); });
+        this.register(() => { toggle(false); this.child.containerEl.querySelectorAll('.pdf-sync-ink-preview, .pdf-sync-ink-live').forEach(el => el.remove()); });
         this.registerDomEvent(this.saveButton, 'click', () => { void this.saveAll(); });
         this.registerDomEvent(this.child.containerEl, 'click', event => {
             if ((event.target as Element)?.closest?.('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask')) {
@@ -150,7 +184,8 @@ export class FreeTextTool extends Component {
         }
         const notes = await promise.catch(() => []);
         if (!this.alive || this.child.file?.path !== file.path || this.active?.page.id === page.id) return;
-        page.div.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask').forEach(el => el.remove());
+        page.div.querySelectorAll('.pdf-sync-note-hit, .pdf-sync-note-preview, .pdf-sync-highlight-mask, .pdf-sync-ink-preview').forEach(el => el.remove());
+        for (const op of this.plugin.freeText.changes(file)) if (op.kind === 'ink' && !op.deleted && op.box.page === page.id && op.points) this.renderInk(page, op.points, op.box.color, op.width ?? 2, false);
         for (const op of this.plugin.freeText.changes(file)) {
             if (op.kind !== 'highlight' || !op.deleted || !op.box.id || op.box.page !== page.id) continue;
             for (const rect of op.rects ?? [op.box.rect]) {
@@ -158,7 +193,7 @@ export class FreeTextTool extends Component {
                 this.position(mask, page, { ...op.box, rect }); this.restorePageRegion(mask, page, { ...op.box, rect });
             }
         }
-        const changes = new Map(this.plugin.freeText.changes(file).filter(op => op.kind !== 'highlight' && op.box.page === page.id).map(op => [op.key, op]));
+        const changes = new Map(this.plugin.freeText.changes(file).filter(op => !op.kind && op.box.page === page.id).map(op => [op.key, op]));
         for (const note of notes) {
             const key = this.plugin.freeText.keyFor(file, note.id!);
             const change = changes.get(key);
@@ -170,6 +205,15 @@ export class FreeTextTool extends Component {
         }
         for (const [key, change] of changes) if (!change.deleted) this.preview(page, change.box, key);
         if (notes.length) void this.plugin.freeText.preload(file).catch(error => console.debug('PDF text index:', error));
+    }
+    private renderInk(page: PDFPageView, points: number[][], color: string, width: number, live: boolean) {
+        if (live) page.div.querySelectorAll('.pdf-sync-ink-live').forEach(el => el.remove());
+        const svg = page.div.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.classList.add(live ? 'pdf-sync-ink-live' : 'pdf-sync-ink-preview');
+        const line = page.div.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        line.setAttribute('points', points.map(p => page.viewport.convertToViewportPoint(p[0], p[1]).join(',')).join(' '));
+        line.setAttribute('fill', 'none'); line.setAttribute('stroke', color); line.setAttribute('stroke-width', String(width * page.viewport.scale));
+        line.setAttribute('stroke-linecap', 'round'); line.setAttribute('stroke-linejoin', 'round'); svg.appendChild(line); page.div.appendChild(svg);
     }
     private async highlightSelection() {
         if (!this.editable()) return;

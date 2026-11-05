@@ -216,3 +216,7 @@ npm run build
 - 第三方许可：[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。
 
 上游功能与使用文档可参考 [PDF++ 文档](https://ryotaushio.github.io/obsidian-pdf-plus/)，本项目新增功能以本仓库说明为准。
+
+### 画笔批注
+
+开启插件设置中的 Enable PDF editing 后，点击 PDF 工具栏上的画笔，在页面上拖动书写；再次点击画笔或按 Esc 退出。笔迹使用红色细线，支持统一保存按钮、Ctrl/Cmd+S 和撤销/重做。保存后笔迹作为标准 PDF Ink 批注写入文件，随 PDF 同步。

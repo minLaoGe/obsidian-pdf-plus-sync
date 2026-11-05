@@ -1,0 +1,17 @@
+import { build } from 'esbuild';
+import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
+globalThis.crypto ??= webcrypto;
+const bundled = await build({ stdin: { contents: "export * from './src/free-text/worker-engine'; export { PDFDocument, PDFDict, PDFName, PDFArray } from '@cantoo/pdf-lib';", resolveDir: process.cwd() }, bundle: true, write: false, format: 'esm', platform: 'node' });
+const api = await import('data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64'));
+const doc = await api.PDFDocument.create(); doc.addPage([300, 400]);
+const op = { key: 'ink:test', kind: 'ink', points: [[20,30],[70,90],[90,100]], width: 2, box: { page: 1, rect: [0,0,0,0], text: '[画笔]', fontSize: 12, color: '#d93025' }, version: 1 };
+const result = await api.processBatch({ bytes: (await doc.save()).buffer, operations: [op], author: 'test' });
+const saved = await api.PDFDocument.load(result.bytes);
+const ann = saved.context.lookup(saved.getPage(0).node.Annots().asArray()[0], api.PDFDict);
+assert.equal(ann.get(api.PDFName.of('Subtype')).toString(), '/Ink');
+assert.equal(ann.lookup(api.PDFName.of('InkList'), api.PDFArray).lookup(0, api.PDFArray).size(), 6);
+assert(ann.lookup(api.PDFName.of('AP'), api.PDFDict).get(api.PDFName.of('N')));
+const deleted = await api.processBatch({ bytes: result.bytes.buffer, operations: [{ ...op, deleted: true, box: result.notes[op.key] }], author: 'test' });
+assert.equal((await api.PDFDocument.load(deleted.bytes)).getPage(0).node.Annots().size(), 0);
+console.log('Passed: PDF ink annotation, appearance, serialization and deletion.');

@@ -112,6 +112,16 @@ export class FreeTextService {
         map.set(key, operation); this.record(file.path, key, undefined, operation);
         this.errors.delete(file.path); this.changed(file.path);
     }
+    stageInk(file: TFile, page: number, points: number[][], color: string, width: number) {
+        this.initialize();
+        if (points.length < 2) return;
+        let map = this.pending.get(file.path); if (!map) this.pending.set(file.path, map = new Map());
+        const key = `ink:${crypto.randomUUID()}`;
+        const operation: TextOperation = { key, kind: 'ink', points: clone(points), width,
+            box: { page, rect: [0, 0, 0, 0], text: '[画笔]', fontSize: 12, color }, version: ++this.sequence };
+        map.set(key, operation); this.record(file.path, key, undefined, operation);
+        this.errors.delete(file.path); this.changed(file.path);
+    }
     keyFor(file: TFile, key: string) { return this.aliases.get(file.path)?.get(key) ?? key; }
     private record(path: string, key: string, before?: TextOperation, after?: TextOperation) {
         let stack = this.history.get(path); if (!stack) this.history.set(path, stack = []);
@@ -224,7 +234,7 @@ export class FreeTextService {
             }
             if (!current?.size) this.pending.delete(file.path);
             this.indexes.delete(file.path); this.persistNow();
-            new Notice('PDF 文字与高亮更改已保存，请等待文件同步完成。');
+            new Notice('PDF 批注更改已保存，请等待文件同步完成。');
         });
         this.queue = task;
         try { await task; }

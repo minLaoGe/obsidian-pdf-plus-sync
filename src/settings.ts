@@ -1407,7 +1407,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addRequireModKeyOnHoverSetting(id: string) {
-		const display = this.app.workspace.hoverLinkSources[id].display;
+		const display = this.app.workspace.hoverLinkSources?.[id]?.display ?? id;
 		const required = this.plugin.requireModKeyForLinkHover(id);
 		return this.addSetting()
 			.setName(`Require ${modKey} key while hovering`)

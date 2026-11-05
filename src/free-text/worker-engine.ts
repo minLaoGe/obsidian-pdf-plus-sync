@@ -5,7 +5,7 @@ import { annotationRef, deleteTextBox, readTextBox, textBoxFingerprint, validate
 import type { TextBox } from './pdf';
 import { renderOffscreen } from './render';
 
-export interface TextOperation { kind?: 'highlight'; rects?: TextBox['rect'][]; opacity?: number; key: string; box: TextBox; deleted?: boolean; version: number; }
+export interface TextOperation { kind?: 'highlight' | 'ink'; points?: number[][]; width?: number; rects?: TextBox['rect'][]; opacity?: number; key: string; box: TextBox; deleted?: boolean; version: number; }
 export interface BatchInput { bytes: ArrayBuffer; operations: TextOperation[]; author: string; }
 export interface BatchOutput { bytes: Uint8Array; inputDigest: string; notes: Record<string, TextBox>; originals?: Record<string, TextBox | null>; }
 export function digest(bytes: ArrayBuffer | Uint8Array): string { return bytesToHex(sha256(new Uint8Array(bytes))); }
@@ -27,6 +27,31 @@ export async function processBatch(input: BatchInput, renderer = renderOffscreen
     const originals: Record<string, TextBox | null> = {};
     for (const operation of input.operations) {
         const box = { ...operation.box, rect: [...operation.box.rect] as TextBox['rect'] };
+        if (operation.kind === 'ink') {
+            originals[operation.key] = null;
+            const page = doc.getPage(box.page - 1);
+            const existing = box.id ? annotationRef(page, box.id) : undefined;
+            if (box.id) {
+                if (!existing || doc.context.lookup(existing, PDFDict).get(PDFName.of('Subtype'))?.toString() !== '/Ink') throw new Error('画笔批注已被其他操作修改');
+                page.node.removeAnnot(existing);
+            }
+            if (operation.deleted) continue;
+            const points = operation.points ?? [], width = operation.width ?? 2;
+            const bounds = page.getCropBox();
+            if (points.length < 2 || points.length > 10000 || !Number.isFinite(width) || width <= 0 || width > 50 || !/^#[\da-f]{6}$/i.test(box.color) || points.some(p => p.length !== 2 || !p.every(Number.isFinite) || p[0] < bounds.x - 1 || p[1] < bounds.y - 1 || p[0] > bounds.x + bounds.width + 1 || p[1] > bounds.y + bounds.height + 1)) throw new Error('无效画笔草稿');
+            const xs = points.map(p => p[0]), ys = points.map(p => p[1]);
+            const left = Math.min(...xs)-width, bottom = Math.min(...ys)-width, right = Math.max(...xs)+width, top = Math.max(...ys)+width;
+            const rgb = [1,3,5].map(i => parseInt(box.color.slice(i,i+2),16)/255);
+            const path = points.map((p, i) => `${p[0]-left} ${p[1]-bottom} ${i ? 'l' : 'm'}`).join('\n');
+            const appearance = doc.context.register(doc.context.flateStream(`q\n${rgb.join(' ')} RG\n${width} w\n1 J 1 j\n${path}\nS\nQ`, { Type: 'XObject', Subtype: 'Form', BBox: [0, 0, right-left, top-bottom] }));
+            const annotation = doc.context.obj({ Type: 'Annot', Subtype: 'Ink', Rect: [left, bottom, right, top], AP: { N: appearance },
+                InkList: [points.flat()], C: [1,3,5].map(i => parseInt(box.color.slice(i,i+2),16)/255),
+                BS: { Type: 'Border', W: width, S: 'S' }, Border: [0,0,width], F: 4,
+                T: PDFHexString.fromText(input.author || 'PDF++ Sync'), M: PDFString.fromDate(new Date()), NM: PDFHexString.fromText(operation.key) });
+            const ref = doc.context.register(annotation); page.node.addAnnot(ref);
+            notes[operation.key] = { ...box, id: ref.generationNumber ? `${ref.objectNumber}R${ref.generationNumber}` : `${ref.objectNumber}R` };
+            continue;
+        }
         if (operation.kind === 'highlight') {
             originals[operation.key] = null;
             const existing = box.id ? annotationRef(doc.getPage(box.page-1), box.id) : undefined;

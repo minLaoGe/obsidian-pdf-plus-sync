@@ -1,3 +1,4 @@
+import { textBoxSize } from './size';
 import { Component, Notice, setIcon, setTooltip } from 'obsidian';
 import interact from 'interactjs';
 import type PDFPlus from 'main';
@@ -172,11 +173,16 @@ export class FreeTextTool extends Component {
         const page = this.child.getPage(Number(pageEl.dataset.pageNumber)); if (!page) return;
         if (page.viewport.rotation % 360) { new Notice('请先将页面显示旋转恢复为 0°。'); return; }
         event.preventDefault(); event.stopImmediatePropagation();
-        const bounds = page.div.getBoundingClientRect(), width = 20 * page.viewport.scale;
+        const preferred = textBoxSize(this.plugin.app.loadLocalStorage?.('pdf-plus-text-box-size'));
+        const bounds = page.div.getBoundingClientRect(), scale = page.viewport.scale;
+        const width = Math.min(preferred.width * scale, Math.max(1, bounds.width - 16));
+        const height = Math.min(preferred.height * scale, Math.max(1, bounds.height - 16));
         const x = Math.max(8, Math.min(event.clientX - bounds.left, bounds.width - width - 8));
-        const y = Math.max(8, Math.min(event.clientY - bounds.top, bounds.height - 60));
-        const p1 = page.getPagePoint(x, y), p2 = page.getPagePoint(x + width, y + 32 * page.viewport.scale);
-        this.openEditor(page, { page: page.id, rect: [p1[0], p2[1], p2[0], p1[1]], text: '', fontSize: 12, color: '#202124' }, `new:${crypto.randomUUID()}`);
+        const y = Math.max(8, Math.min(event.clientY - bounds.top, bounds.height - height - 8));
+        const p1 = page.getPagePoint(x, y), p2 = page.getPagePoint(x + width, y + height);
+        const savedSize = Number(this.plugin.app.loadLocalStorage?.('pdf-plus-text-font-size'));
+        const fontSize = Number.isFinite(savedSize) && savedSize >= 6 && savedSize <= 72 ? savedSize : 12;
+        this.openEditor(page, { page: page.id, rect: [p1[0], p2[1], p2[0], p1[1]], text: '', fontSize, color: '#202124' }, `new:${crypto.randomUUID()}`);
     }
     private async targets(page: PDFPageView) {
         const file = this.child.file;
@@ -280,7 +286,7 @@ export class FreeTextTool extends Component {
         if (mask) this.restorePageRegion(el, page, box);
         if (!mask) {
             el.textContent = box.text; el.style.color = box.color; el.style.fontSize = `${box.fontSize * page.viewport.scale}px`;
-            el.style.padding = `${4 * page.viewport.scale}px`; el.style.minHeight = ''; el.style.width = 'max-content'; el.style.maxWidth = `${Math.max(20, page.div.clientWidth - el.offsetLeft)}px`;
+            el.style.padding = `${4 * page.viewport.scale}px`; el.style.minHeight = ''; el.style.maxWidth = `${Math.max(20, page.div.clientWidth - el.offsetLeft)}px`;
             el.dataset.box = JSON.stringify(box); el.dataset.key = key; el.dataset.page = String(page.id);
             el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', '编辑未保存的文字批注');
             el.addEventListener('keydown', e => { if (e.key === 'Enter' && this.editable()) this.openEditor(page, box, key); });
@@ -296,7 +302,7 @@ export class FreeTextTool extends Component {
         });
         if (source.id) this.preview(page, source, key, true);
         const element = page.div.createDiv({ cls: 'pdf-sync-editor' });
-        this.position(element, page, box); element.style.minHeight = ''; element.style.width = 'max-content';
+        this.position(element, page, box); element.style.height = element.style.minHeight; element.style.minHeight = '';
         element.setAttribute('role', 'group'); element.setAttribute('aria-label', 'PDF 文字批注');
         element.style.maxWidth = `${Math.max(20, page.div.clientWidth - element.offsetLeft)}px`;
         const content = element.createDiv({ cls: 'pdf-sync-editor-content', attr: { contenteditable: 'plaintext-only', role: 'textbox', 'aria-label': '文字内容', 'aria-multiline': 'true', 'data-placeholder': '' } });
@@ -318,8 +324,13 @@ export class FreeTextTool extends Component {
         const plus = sizeGroup.createEl('button', { text: '+', attr: { type: 'button', 'aria-label': '增大字号' } });
         const setSize = (value: number) => {
             if (!Number.isFinite(value)) return;
+            const oldSize = active.box.fontSize;
             active.box.fontSize = Math.max(6, Math.min(72, value)); active.box.autoFont = false; size.value = String(active.box.fontSize);
-            this.styleContent(active); active.dirty = true; this.checkpoint(); this.positionToolbar();
+            const ratio = active.box.fontSize / oldSize;
+            element.style.width = `${Math.min(page.div.clientWidth - element.offsetLeft, element.offsetWidth * ratio)}px`;
+            element.style.height = `${Math.min(page.div.clientHeight - element.offsetTop, element.offsetHeight * ratio)}px`;
+            this.plugin.app.saveLocalStorage?.('pdf-plus-text-font-size', active.box.fontSize);
+            this.styleContent(active); this.rememberSize(active); active.dirty = true; this.checkpoint(); this.positionToolbar();
         };
         minus.addEventListener('click', () => setSize(active.box.fontSize - 1)); plus.addEventListener('click', () => setSize(active.box.fontSize + 1));
         size.addEventListener('change', () => setSize(Number(size.value)));
@@ -339,8 +350,9 @@ export class FreeTextTool extends Component {
         icon('trash-2', '删除文字框', () => { this.plugin.freeText.stage(file, key, active.box, true); this.closeEditor(); this.refresh(); });
         icon('check', '完成编辑（写入 PDF 请点保存更改）', () => this.commitCurrent()).addClass('pdf-sync-format-done');
         content.addEventListener('compositionstart', () => { active.composing = true; });
-        content.addEventListener('compositionend', () => { active.composing = false; active.dirty = true; this.checkpoint(); });
+        content.addEventListener('compositionend', () => { active.composing = false; this.fitEditor(active); active.dirty = true; this.checkpoint(); });
         content.addEventListener('input', () => {
+            this.fitEditor(active);
             active.dirty = true; window.clearTimeout(this.inputTimer);
             this.inputTimer = window.setTimeout(() => { if (!active.composing) this.checkpoint(); }, 120);
             this.positionToolbar();
@@ -361,13 +373,29 @@ export class FreeTextTool extends Component {
             element.style.top = `${Math.max(0, Math.min(maxY, element.offsetTop + event.dy))}px`;
             active.dirty = true; this.positionToolbar();
         }, end: () => this.checkpoint() } });
-        const left = element.createDiv({ cls: 'pdf-sync-resize-handle is-left', attr: { 'aria-hidden': 'true' } });
-        const right = element.createDiv({ cls: 'pdf-sync-resize-handle is-right', attr: { 'aria-hidden': 'true' } });
-        const resize = interact(element).resizable({ edges: { left, right, top: false, bottom: false }, listeners: { move: (event: any) => {
-            const x = Math.max(0, element.offsetLeft + event.deltaRect.left);
-            element.style.left = `${x}px`; element.style.width = `${Math.max((active.box.fontSize + 8) * active.viewport.scale, Math.min(event.rect.width, page.div.clientWidth - x))}px`;
+        element.createDiv({ cls: 'pdf-sync-resize-handle is-left', attr: { 'aria-hidden': 'true' } });
+        element.createDiv({ cls: 'pdf-sync-resize-handle is-right', attr: { 'aria-hidden': 'true' } });
+        element.createDiv({ cls: 'pdf-sync-resize-handle is-top', attr: { 'aria-hidden': 'true' } });
+        element.createDiv({ cls: 'pdf-sync-resize-handle is-bottom', attr: { 'aria-hidden': 'true' } });
+        for (const corner of ['top-left', 'top-right', 'bottom-left', 'bottom-right']) {
+            element.createDiv({ cls: `pdf-sync-resize-handle is-${corner}`, attr: { 'aria-hidden': 'true' } });
+        }
+        const resize = interact(element).resizable({ edges: {
+            left: '.is-left, .is-top-left, .is-bottom-left', right: '.is-right, .is-top-right, .is-bottom-right',
+            top: '.is-top, .is-top-left, .is-top-right', bottom: '.is-bottom, .is-bottom-left, .is-bottom-right'
+        }, listeners: { move: (event: any) => {
+            const minWidth = (active.box.fontSize + 8) * active.viewport.scale;
+            const minHeight = content.scrollHeight;
+            const oldX = element.offsetLeft, oldY = element.offsetTop;
+            const oldRight = oldX + element.offsetWidth, oldBottom = oldY + element.offsetHeight;
+            const x = Math.max(0, Math.min(oldRight - minWidth, oldX + event.deltaRect.left));
+            const y = Math.max(0, Math.min(oldBottom - minHeight, oldY + event.deltaRect.top));
+            element.style.left = `${x}px`; element.style.top = `${y}px`;
+            element.style.maxWidth = `${page.div.clientWidth - x}px`;
+            element.style.width = `${Math.max(minWidth, Math.min(event.rect.width, page.div.clientWidth - x))}px`;
+            element.style.height = `${Math.max(content.scrollHeight, Math.min(event.rect.height, page.div.clientHeight - y))}px`;
             active.dirty = true; this.positionToolbar();
-        }, end: () => this.checkpoint() } });
+        }, end: () => { this.rememberSize(active); this.checkpoint(); } } });
         active.interactions.push(drag, resize);
         this.styleContent(active); this.positionToolbar(); this.updateStatus(); content.focus();
         this.child.destroyAnnotationPopup(); queueMicrotask(() => { if (this.alive) this.child.destroyAnnotationPopup(); });
@@ -384,12 +412,34 @@ export class FreeTextTool extends Component {
         active.content.style.fontSize = `${active.box.fontSize * active.viewport.scale}px`;
         active.content.style.color = active.box.color; active.content.style.padding = `${4 * active.viewport.scale}px`;
         active.element.style.minWidth = `${(active.box.fontSize + 8) * active.viewport.scale}px`;
+        this.fitEditor(active);
+    }
+    private fitEditor(active: ActiveEditor) {
+        const { content, element, page } = active;
+        const ctx = content.ownerDocument.createElement('canvas').getContext('2d');
+        if (ctx) {
+            const style = content.win.getComputedStyle(content);
+            ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+            const text = content.innerText.replace(/\r\n?/g, '\n');
+            const desired = Math.max(...text.split('\n').map(line => ctx.measureText(line).width), 0)
+                + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 2;
+            const available = Math.max(0, page.div.clientWidth - element.offsetLeft);
+            if (desired > element.clientWidth) element.style.width = `${Math.min(desired, available)}px`;
+        }
+        const needed = content.scrollHeight;
+        if (needed > element.clientHeight) element.style.height = `${needed}px`;
+    }
+    private rememberSize(active: ActiveEditor) {
+        const bounds = active.element.getBoundingClientRect();
+        this.plugin.app.saveLocalStorage?.('pdf-plus-text-box-size', { width: bounds.width / active.viewport.scale, height: bounds.height / active.viewport.scale });
     }
     private checkpoint() {
         const active = this.active; if (!active || !active.dirty || active.composing) return;
         const { element, content, viewport } = active;
-        const p1 = viewport.convertToPdfPoint(element.offsetLeft, element.offsetTop);
-        const p2 = viewport.convertToPdfPoint(element.offsetLeft + element.offsetWidth, element.offsetTop + element.offsetHeight);
+        const bounds = element.getBoundingClientRect(), pageBounds = active.page.div.getBoundingClientRect();
+        const x = bounds.left - pageBounds.left, y = bounds.top - pageBounds.top;
+        const p1 = viewport.convertToPdfPoint(x, y);
+        const p2 = viewport.convertToPdfPoint(x + bounds.width, y + bounds.height);
         active.box.rect = [Math.min(p1[0], p2[0]), Math.min(p1[1], p2[1]), Math.max(p1[0], p2[0]), Math.max(p1[1], p2[1])];
         active.box.text = content.innerText.replace(/\r\n?/g, '\n');
         this.plugin.freeText.stage(active.file, active.key, active.box, !active.box.text.trim());

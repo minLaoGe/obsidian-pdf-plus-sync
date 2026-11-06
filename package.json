@@ -8,7 +8,7 @@
         "lint": "eslint src/ --ext .ts,.tsx",
         "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
-        "test": "node tests/reading-progress.mjs && node tests/free-text.mjs && node tests/free-text-service.mjs && node tests/free-text-worker.mjs && node tests/ink.mjs"
+        "test": "node tests/reading-progress.mjs && node tests/free-text.mjs && node tests/free-text-service.mjs && node tests/free-text-worker.mjs && node tests/ink.mjs && node tests/text-layout.mjs"
     },
     "keywords": [],
     "author": "minLaoGe",

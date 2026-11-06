@@ -704,15 +704,18 @@ body.pdf-plus-vim-hint-inverted {
 .pdf-sync-save:disabled { opacity: .55; }
 .pdf-sync-note-hit { position: absolute; z-index: 20; margin: 0; padding: 0 !important; min-width: 4px; min-height: 4px; border: 1px solid transparent !important; border-radius: 2px; background: transparent !important; box-shadow: none !important; cursor: text; }
 .pdf-sync-note-hit:hover, .pdf-sync-note-hit:focus-visible { outline: 1px solid #1a73e8; }
-.pdf-sync-note-preview, .pdf-sync-editor { position: absolute; z-index: 21; box-sizing: border-box; background: transparent; color: #202124; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; cursor: text; }
+.pdf-sync-note-preview, .pdf-sync-editor { position: absolute; z-index: 21; box-sizing: border-box; background: transparent; color: #202124; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; cursor: text; }
 .pdf-sync-note-preview.is-mask { z-index: 20; pointer-events: none; }
 .pdf-sync-note-preview.is-mask canvas { display: block; position: absolute; inset: 0; }
 .pdf-sync-editor { z-index: 30; outline: 1.5px solid #1a73e8; border-radius: 1px; min-width: 1em; }
-.pdf-sync-editor-content { width: max-content; max-width: 100%; min-width: 1em; min-height: 1.4em; box-sizing: border-box; outline: none !important; white-space: pre-wrap; word-break: break-all; caret-color: #1a73e8; user-select: text; -webkit-user-select: text; cursor: text; }
+.pdf-sync-editor-content { width: 100%; max-width: 100%; min-width: 1em; min-height: 1.4em; box-sizing: border-box; outline: none !important; white-space: pre-wrap; word-break: break-all; caret-color: #1a73e8; user-select: text; -webkit-user-select: text; cursor: text; }
 .pdf-sync-editor-content:empty:before { content: attr(data-placeholder); color: #9aa0a6; pointer-events: none; }
 .pdf-sync-resize-handle { position: absolute; top: 50%; width: 8px; height: 8px; margin-top: -4px; background: #fff; border: 1.5px solid #1a73e8; border-radius: 50%; touch-action: none; }
 .pdf-sync-resize-handle.is-left { left: -5px; cursor: ew-resize; }
 .pdf-sync-resize-handle.is-right { right: -5px; cursor: ew-resize; }
+.pdf-sync-resize-handle.is-top, .pdf-sync-resize-handle.is-bottom { left: 50%; margin-left: -4px; cursor: ns-resize; }
+.pdf-sync-resize-handle.is-top { top: -1px; }
+.pdf-sync-resize-handle.is-bottom { top: auto; bottom: -5px; }
 .pdf-sync-floating-toolbar { position: fixed; z-index: 10000; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; padding: 6px; max-width: calc(100vw - 16px); border: 1px solid #dadce0; border-radius: 10px; background: #fff; color: #3c4043; box-shadow: 0 3px 12px #20212424, 0 1px 3px #20212414; font: 13px/1.2 -apple-system, BlinkMacSystemFont, sans-serif; }
 .pdf-sync-floating-toolbar button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-width: 0; padding: 4px; border: 0; border-radius: 5px; background: transparent; box-shadow: none; color: #3c4043; }
 .pdf-sync-floating-toolbar button:hover { background: #f1f3f4; }
@@ -768,3 +771,11 @@ body.pdf-plus-vim-hint-inverted {
 .pdf-sync-ink-preview, .pdf-sync-ink-live { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; overflow: hidden; }
 
 .pdf-sync-ink-color { width: 28px; height: 28px; padding: 2px; flex-shrink: 0; cursor: pointer; }
+
+.pdf-sync-resize-handle { width: 12px; height: 12px; z-index: 2; }
+.pdf-sync-resize-handle.is-top-left, .pdf-sync-resize-handle.is-top-right,
+.pdf-sync-resize-handle.is-bottom-left, .pdf-sync-resize-handle.is-bottom-right { margin: 0; }
+.pdf-sync-resize-handle.is-top-left { top: -6px; left: -6px; cursor: nwse-resize; }
+.pdf-sync-resize-handle.is-top-right { top: -6px; right: -6px; cursor: nesw-resize; }
+.pdf-sync-resize-handle.is-bottom-left { top: auto; bottom: -6px; left: -6px; cursor: nesw-resize; }
+.pdf-sync-resize-handle.is-bottom-right { top: auto; bottom: -6px; right: -6px; cursor: nwse-resize; }

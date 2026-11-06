@@ -8,7 +8,7 @@ function paint(box: TextBox, canvas: HTMLCanvasElement | OffscreenCanvas): numbe
     const font = `${box.fontSize}px -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif`;
     ctx.font = font;
     const lines = wrapText(box.text, Math.max(8, width - 8), s => ctx.measureText(s).width);
-    const height = Math.max(box.fontSize * 1.4 + 8, lines.length * box.fontSize * 1.4 + 8);
+    const height = Math.max(box.rect[3] - box.rect[1], box.fontSize * 1.4 + 8, lines.length * box.fontSize * 1.4 + 8);
     const scale = Math.min(3, 4096 / width, 4096 / height);
     canvas.width = Math.ceil(width * scale);
     canvas.height = Math.ceil(height * scale);

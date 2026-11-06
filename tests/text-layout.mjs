@@ -1,0 +1,12 @@
+import { build } from 'esbuild';
+import assert from 'node:assert/strict';
+const bundled = await build({ stdin: { contents: "export * from './src/free-text/render'; export * from './src/free-text/size';", resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' });
+const { renderText, textBoxSize } = await import('data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64'));
+const context = { measureText: s => ({ width: [...s].length * 6 }), scale() {}, fillText() {} };
+const doc = { createElement: () => ({ getContext: () => context, toDataURL: () => 'data:image/png;base64,AA==' }) };
+const box = { page: 1, rect: [10, 100, 110, 180], text: '一行文字', fontSize: 12, color: '#202124' };
+assert.equal(renderText(box, doc).height, 80, 'Manual height survives rendering');
+assert(renderText({ ...box, rect: [10, 100, 50, 120], text: '一行文字'.repeat(10) }, doc).height > 20, 'Long text grows beyond the selected height');
+assert.deepEqual(textBoxSize({ width: 240, height: 70 }), { width: 240, height: 70 });
+assert.deepEqual(textBoxSize({ width: -1, height: NaN }), { width: 160, height: 32 });
+console.log('Passed: text annotation preserves manual height and expands for wrapped text.');
